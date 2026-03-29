@@ -1,6 +1,7 @@
 {
   "name": "xiaoheChat",
   "version": "1.0.0",
+  "description": "Legacy lightweight XiaoHe chat function. Do not extend as the mainline agent.",
   "dependencies": {
     "wx-server-sdk": "latest"
   }

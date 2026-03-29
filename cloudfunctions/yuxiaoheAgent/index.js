@@ -1,3 +1,7 @@
+// Legacy transitional implementation.
+// The only formal mainline for YuXiaoHe is cloudfunctions/agent-yuxiaohe-1grmumm967563411.
+// Keep this file only for migration reference or temporary compatibility. Do not continue feature expansion here.
+
 const OpenAI = require("openai")
 const cloud = require("wx-server-sdk")
 const basePersonaPrompt = require("./prompts/basePersonaPrompt")
@@ -514,6 +518,7 @@ async function loadCandidates(input) {
 }
 
 exports.main = async function main(event) {
+  console.warn("[yuxiaoheAgent] legacy implementation invoked; mainline agent service should be preferred")
   const input = parsePayload(event)
   const route = routeIntent(input.question)
 

@@ -1,3 +1,7 @@
+// Legacy lightweight implementation.
+// The only formal mainline for YuXiaoHe is cloudfunctions/agent-yuxiaohe-1grmumm967563411.
+// Keep this file only for migration reference or temporary compatibility. Do not continue feature expansion here.
+
 const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -184,6 +188,7 @@ async function getActivityCandidates(input) {
 }
 
 exports.main = async (event) => {
+  console.warn('[xiaoheChat] legacy implementation invoked; mainline agent service should be preferred')
   const mode = event.mode || 'generic'
 
   if (mode !== 'generic') {

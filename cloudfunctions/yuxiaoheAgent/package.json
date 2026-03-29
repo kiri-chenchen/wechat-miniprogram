@@ -1,6 +1,7 @@
 {
   "name": "yuxiaoheAgent",
   "version": "1.0.0",
+  "description": "Legacy transitional implementation for YuXiaoHe. Do not extend as the mainline agent.",
   "dependencies": {
     "@cloudbase/node-sdk": "latest",
     "openai": "^4.104.0",
