@@ -72,47 +72,57 @@ function createMessage(role, text, extra = {}) {
   }
 }
 
-function buildRouteSummary(formData = {}) {
-  const origin = normalizeText(formData.origin)
-  const destination = normalizeText(formData.destination)
+function buildSkillRequest(skillMode = "", formData = {}) {
+  const normalized = Object.fromEntries(
+    Object.entries(formData || {}).map(([key, value]) => [key, normalizeText(value)])
+  )
 
-  return [
-    `路线先帮你整理好了：从 ${origin} 出发，前往 ${destination}。`,
-    "你可以先按这三个顺序准备：",
-    "1. 先确认出发时间和交通方式，尽量把到达时间卡在白天。",
-    "2. 提前看看目的地当天的天气、开放情况和停车信息。",
-    "3. 如果是周末或节假日出行，建议把返程时间也一起预留出来。"
-  ].join("\n")
-}
+  if (skillMode === "route_planning") {
+    return {
+      question: `请根据我的路线规划需求，结合平台内容给出更实用的出行建议。我的出发地是${normalized.origin}，目的地是${normalized.destination}。`,
+      contextPayload: {
+        mode: "skill",
+        skillContext: {
+          mode: "route_planning",
+          title: "路线规划",
+          collected: normalized
+        }
+      }
+    }
+  }
 
-function buildGuideSummary(formData = {}) {
-  const peopleCount = normalizeText(formData.peopleCount) || "未填写人数"
-  const groupType = normalizeText(formData.groupType) || "未说明同行类型"
-  const days = normalizeText(formData.days) || "未说明天数"
-  const region = normalizeText(formData.region) || "未说明目的地区域"
-  const budget = normalizeText(formData.budget) || "未说明预算"
+  if (skillMode === "guide_customization") {
+    return {
+      question: `请根据我的攻略定制需求，结合平台内容给出更适合的推荐。我这次${normalized.peopleCount}出行，同行类型是${normalized.groupType}，计划${normalized.days}，想去${normalized.region}，预算是${normalized.budget}。`,
+      contextPayload: {
+        mode: "skill",
+        skillContext: {
+          mode: "guide_customization",
+          title: "攻略定制",
+          collected: normalized
+        }
+      }
+    }
+  }
 
-  return [
-    "小禾先把你的出行偏好整理成一版清晰简报：",
-    `- 出行人数：${peopleCount}`,
-    `- 同行类型：${groupType}`,
-    `- 计划时长：${days}`,
-    `- 意向地区：${region}`,
-    `- 预算范围：${budget}`,
-    "",
-    "按这组条件，后面你最适合继续问我具体活动、景点、住宿或伴手礼推荐。"
-  ].join("\n")
-}
+  if (skillMode === "xiaohe_feedback") {
+    return {
+      question: `这是我想通过问小禾提交的一条${normalized.feedbackType || "体验反馈"}，请先理解我的反馈重点，并给出合适的回应。反馈内容是：${normalized.feedbackText}。`,
+      contextPayload: {
+        mode: "skill",
+        skillContext: {
+          mode: "xiaohe_feedback",
+          title: "小禾树洞",
+          collected: normalized
+        }
+      }
+    }
+  }
 
-function buildFeedbackSummary(formData = {}) {
-  const feedbackType = normalizeText(formData.feedbackType) || "体验反馈"
-  const feedbackText = normalizeText(formData.feedbackText)
-
-  return [
-    `这条${feedbackType}小禾已经帮你记录下来了。`,
-    feedbackText ? `你的核心想法是：${feedbackText}` : "",
-    "如果你愿意，还可以继续补充场景、时间或具体对象，这样后续整理会更准确。"
-  ].filter(Boolean).join("\n")
+  return {
+    question: "",
+    contextPayload: {}
+  }
 }
 
 function toAgentHistory(messages = []) {
@@ -574,6 +584,21 @@ Page({
     await this.requestGenericAnswer(value)
   },
 
+  requestSkillAnswer(skillMode, formData) {
+    const skillRequest = buildSkillRequest(skillMode, formData)
+    const question = normalizeText(skillRequest.question)
+
+    if (!question) {
+      this.appendAiMessage("这次收集到的信息还不够完整，你可以再补充一点，小禾再继续帮你整理。")
+      return
+    }
+
+    this.activateGenericMode()
+    this.requestGenericAnswer(question, {
+      contextPayload: skillRequest.contextPayload || {}
+    })
+  },
+
   handleSkillReply(value) {
     if (!this.data.currentStep || /_(done)$/u.test(this.data.currentStep)) {
       this.activateGenericMode()
@@ -608,14 +633,7 @@ Page({
 
     if (this.data.currentStep === "route_destination") {
       formData.destination = value
-      this.activateGenericMode()
-      this.appendAiMessage(buildRouteSummary(formData), {
-        guessQuestions: [
-          `从${formData.origin}去${formData.destination}更适合怎么玩？`,
-          `${formData.destination}附近有什么值得去的地方？`,
-          `${formData.destination}适合带什么特产回去？`
-        ]
-      })
+      this.requestSkillAnswer("route_planning", formData)
     }
   },
 
@@ -653,14 +671,7 @@ Page({
 
     if (step === "guide_budget") {
       formData.budget = value
-      this.activateGenericMode()
-      this.appendAiMessage(buildGuideSummary(formData), {
-        guessQuestions: [
-          `${formData.region}有哪些适合${formData.groupType || "这次同行人群"}的活动？`,
-          `${formData.region}有没有适合${formData.days || "这次行程"}的玩法安排？`,
-          `${formData.region}预算${formData.budget || "合适"}时推荐住哪里？`
-        ]
-      })
+      this.requestSkillAnswer("guide_customization", formData)
     }
   },
 
@@ -675,14 +686,7 @@ Page({
     }
 
     formData.feedbackText = value
-    this.activateGenericMode()
-    this.appendAiMessage(buildFeedbackSummary(formData), {
-      guessQuestions: [
-        "我还想继续补充这个反馈",
-        "问小禾帮我推荐更合适的内容",
-        "附近还有哪些值得去看看？"
-      ]
-    })
+    this.requestSkillAnswer("xiaohe_feedback", formData)
   },
 
   appendAiMessage(text, extra = {}) {
@@ -739,7 +743,7 @@ Page({
     }
   },
 
-  async requestGenericAnswer(question) {
+  async requestGenericAnswer(question, options = {}) {
     if (!question || this.data.isAiLoading) return
 
     if (!yuxiaoheBotId) {
@@ -759,13 +763,13 @@ Page({
     this.startLoadingAnimation(aiMessageId)
 
     try {
-      const groundedUiPromise = this.buildGroundedRecommendationUi(question)
+      const groundedUiPromise = this.buildGroundedRecommendationUi(question, options.contextPayload || {})
       const res = await wx.cloud.extend.AI.bot.sendMessage({
         data: {
           botId: yuxiaoheBotId,
           msg: question,
           history: toAgentHistory(this.data.messages),
-          contextPayload: this.buildGenericPayload(question)
+          contextPayload: this.buildGenericPayload(question, options.contextPayload || {})
         }
       })
 
@@ -815,7 +819,7 @@ Page({
     }
   },
 
-  buildGenericPayload(question) {
+  buildGenericPayload(question, extraPayload = {}) {
     const app = getApp()
     let userInfo = {}
     let cachedUserLocation = null
@@ -832,6 +836,13 @@ Page({
       cachedUserLocation = null
     }
 
+    const skillContext = extraPayload.skillContext || {}
+    const explicitRegion = normalizeText(
+      skillContext.mode === "route_planning"
+        ? skillContext.collected && skillContext.collected.destination
+        : skillContext.collected && skillContext.collected.region
+    )
+
     return {
       mode: "generic",
       question,
@@ -839,6 +850,8 @@ Page({
         province: userInfo.province || "",
         city: userInfo.city || "",
         district: userInfo.district || "",
+        displayName: explicitRegion || "",
+        locationText: explicitRegion || "",
         latitude: cachedUserLocation && cachedUserLocation.latitude ? cachedUserLocation.latitude : "",
         longitude: cachedUserLocation && cachedUserLocation.longitude ? cachedUserLocation.longitude : ""
       },
@@ -856,7 +869,8 @@ Page({
         .slice(-8),
       context: {
         source: this.data.source || "search_input"
-      }
+      },
+      ...extraPayload
     }
   },
 
@@ -892,7 +906,7 @@ Page({
     }
   },
 
-  async buildGroundedRecommendationUi(question) {
+  async buildGroundedRecommendationUi(question, extraPayload = {}) {
     const recommendationType = detectRecommendationType(question)
     if (!recommendationType) {
       return {
@@ -903,18 +917,18 @@ Page({
     }
 
     if (recommendationType === "activity") {
-      return this.buildGroundedActivityUi(question)
+      return this.buildGroundedActivityUi(question, extraPayload)
     }
 
     if (recommendationType === "scenic") {
-      return this.buildGroundedScenicUi(question)
+      return this.buildGroundedScenicUi(question, extraPayload)
     }
 
-    return this.buildGroundedProductUi(question)
+    return this.buildGroundedProductUi(question, extraPayload)
   },
 
-  async buildGroundedActivityUi(question) {
-    const payload = this.buildGenericPayload(question)
+  async buildGroundedActivityUi(question, extraPayload = {}) {
+    const payload = this.buildGenericPayload(question, extraPayload)
     const location = payload.location || {}
     const list = await this.fetchActivitiesForChat()
     const rankedList = list
@@ -957,8 +971,8 @@ Page({
     }
   },
 
-  async buildGroundedScenicUi(question) {
-    const payload = this.buildGenericPayload(question)
+  async buildGroundedScenicUi(question, extraPayload = {}) {
+    const payload = this.buildGenericPayload(question, extraPayload)
     const location = payload.location || {}
     const list = await this.fetchScenicsForChat()
     const rankedList = list
@@ -1001,8 +1015,8 @@ Page({
     }
   },
 
-  async buildGroundedProductUi(question) {
-    const payload = this.buildGenericPayload(question)
+  async buildGroundedProductUi(question, extraPayload = {}) {
+    const payload = this.buildGenericPayload(question, extraPayload)
     const location = payload.location || {}
     const list = await this.fetchProductsForChat()
     const rankedList = list

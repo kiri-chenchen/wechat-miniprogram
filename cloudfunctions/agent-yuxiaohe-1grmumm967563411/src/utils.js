@@ -60,6 +60,25 @@ function buildRegionLabel(location = {}) {
   return region || normalizeText(location.locationText) || DEFAULT_REGION_LABEL;
 }
 
+function mergeSkillLocation(location = {}, skillContext = {}) {
+  const mode = normalizeText(skillContext.mode);
+  const collected = skillContext.collected || {};
+  const explicitRegion =
+    mode === "route_planning"
+      ? normalizeText(collected.destination)
+      : normalizeText(collected.region);
+
+  if (!explicitRegion) {
+    return location || {};
+  }
+
+  return {
+    ...(location || {}),
+    displayName: explicitRegion,
+    locationText: explicitRegion,
+  };
+}
+
 function safeNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -379,7 +398,10 @@ export async function buildPlatformGroundingContext(payload = {}) {
     };
   }
 
-  const location = payload.location || {};
+  const location = mergeSkillLocation(
+    payload.location || {},
+    payload.skillContext || {}
+  );
   const userProfile = payload.userProfile || {};
   const preferences = payload.preferences || {};
   const datasets = payload.platformDataset || (await loadPlatformDataset());
@@ -441,6 +463,12 @@ export function buildAgentUserPrompt({
     .map(([key, value]) => [normalizeText(key), normalizeText(value)])
     .filter(([, value]) => value)
     .map(([key, value]) => `${key}: ${value}`);
+  const skillMode = normalizeText(contextPayload?.skillContext?.mode);
+  const skillTitle = normalizeText(contextPayload?.skillContext?.title);
+  const skillPairs = Object.entries(contextPayload?.skillContext?.collected || {})
+    .map(([key, value]) => [normalizeText(key), normalizeText(value)])
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}: ${value}`);
 
   const sections = [
     "你是智能体“裕小禾”，对话时自称“小禾”。",
@@ -448,6 +476,11 @@ export function buildAgentUserPrompt({
     "你要基于当前小程序平台能力回答，优先使用已经提供的平台候选内容和用户上下文，不要编造平台里不存在的内容。",
     "如果问题涉及平台推荐，要结合用户地区、偏好和候选内容直接给出贴近当前需求的建议。",
     "如果信息不足，要诚实说明，并给出下一步更具体的提问建议。",
+    skillMode ? `当前对话来自技能流程：${skillTitle || skillMode}` : "",
+    skillPairs.length ? `技能已收集信息：${skillPairs.join("；")}` : "",
+    skillMode
+      ? "这不是普通闲聊。请把已经收集到的技能信息真正用进回答里，直接给出有行动价值的建议或回应。"
+      : "",
     `用户当前问题：${normalizedQuestion}`,
     `用户当前地区：${regionLabel}`,
     profileTags ? `用户画像标签：${profileTags}` : "",
