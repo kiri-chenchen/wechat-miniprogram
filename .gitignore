@@ -2,6 +2,7 @@ project.private.config.json
 .env
 .env.*
 !.env.example
+Copy-Item .env.example .env
 node_modules/
 miniprogram_npm/
 dist/
