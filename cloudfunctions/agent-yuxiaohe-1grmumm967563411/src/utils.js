@@ -8,7 +8,7 @@ const MAX_CANDIDATE_PER_TYPE = 3;
 
 let cloudbaseApp = null;
 
-function normalizeText(value) {
+export function normalizeText(value) {
   return String(value || "").trim();
 }
 
@@ -427,6 +427,36 @@ export async function buildPlatformGroundingContext(payload = {}) {
     candidates: ranked.selected,
     prompt,
   };
+}
+
+export function buildAgentUserPrompt({
+  question = "",
+  groundingContext = {},
+  contextPayload = {},
+} = {}) {
+  const normalizedQuestion = normalizeText(question);
+  const regionLabel = normalizeText(groundingContext?.regionLabel) || DEFAULT_REGION_LABEL;
+  const profileTags = normalizeArray(contextPayload?.userProfile?.dnaTags).join("、");
+  const preferencePairs = Object.entries(contextPayload?.preferences || {})
+    .map(([key, value]) => [normalizeText(key), normalizeText(value)])
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}: ${value}`);
+
+  const sections = [
+    "你是智能体“裕小禾”，对话时自称“小禾”。",
+    "“问小禾”只是小程序里的功能模块名，不是你的名字。",
+    "你要基于当前小程序平台能力回答，优先使用已经提供的平台候选内容和用户上下文，不要编造平台里不存在的内容。",
+    "如果问题涉及平台推荐，要结合用户地区、偏好和候选内容直接给出贴近当前需求的建议。",
+    "如果信息不足，要诚实说明，并给出下一步更具体的提问建议。",
+    `用户当前问题：${normalizedQuestion}`,
+    `用户当前地区：${regionLabel}`,
+    profileTags ? `用户画像标签：${profileTags}` : "",
+    preferencePairs.length ? `用户偏好：${preferencePairs.join("；")}` : "",
+    groundingContext?.prompt || "",
+    "请直接开始回答用户问题。",
+  ];
+
+  return sections.filter(Boolean).join("\n\n");
 }
 
 export class DetectCloudbaseUserMiddleware {

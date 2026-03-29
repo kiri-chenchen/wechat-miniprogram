@@ -12,8 +12,10 @@ import {
 } from "@cloudbase/agent-adapter-wx";
 import {
   DetectCloudbaseUserMiddleware,
+  buildAgentUserPrompt,
   buildPlatformGroundingContext,
 } from "./utils.js";
+import { buildDirectAnswer } from "./direct-answer.js";
 
 dotenvx.config();
 
@@ -228,10 +230,11 @@ async function buildAgentInputFromBotBody(body = {}) {
   const groundingContext = await buildPlatformGroundingContext(
     body?.contextPayload || {}
   );
-
-  const groundedMessageContent = groundingContext?.prompt
-    ? `${groundingContext.prompt}\n\n请开始回答用户问题。`
-    : msg;
+  const groundedMessageContent = buildAgentUserPrompt({
+    question: msg,
+    groundingContext,
+    contextPayload: body?.contextPayload || {},
+  });
 
   return {
     messages: historyMessages.concat({
@@ -239,7 +242,8 @@ async function buildAgentInputFromBotBody(body = {}) {
       role: "user",
       content: groundedMessageContent,
     }),
-    threadId: String(body?.conversationId || "").trim() || `conversation-${Date.now()}`,
+    threadId:
+      String(body?.conversationId || "").trim() || `conversation-${Date.now()}`,
     runId: createRunId(),
     tools: [],
     context: [],
@@ -253,6 +257,15 @@ async function buildAgentInputFromBotBody(body = {}) {
 
 function writeSseChunk(res, data) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function writeDirectTextResponse(res, text) {
+  const content = String(text || "").trim();
+  if (content) {
+    writeSseChunk(res, { content });
+  }
+  res.write("data: [DONE]\n\n");
+  res.end();
 }
 
 async function handleBotSendMessage(req, res) {
@@ -269,6 +282,20 @@ async function handleBotSendMessage(req, res) {
   let chunkCount = 0;
 
   try {
+    const directAnswer = await buildDirectAnswer({
+      question: req.body?.msg || "",
+      contextPayload: req.body?.contextPayload || {},
+    });
+
+    if (directAnswer) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders?.();
+      writeDirectTextResponse(res, directAnswer);
+      return;
+    }
+
     const input = await buildAgentInputFromBotBody(req.body || {});
     const cloudbaseUserId = extractCloudbaseUserId(req);
     input.forwardedProps = {
