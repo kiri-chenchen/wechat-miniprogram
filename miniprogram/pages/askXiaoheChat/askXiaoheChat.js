@@ -72,6 +72,49 @@ function createMessage(role, text, extra = {}) {
   }
 }
 
+function buildRouteSummary(formData = {}) {
+  const origin = normalizeText(formData.origin)
+  const destination = normalizeText(formData.destination)
+
+  return [
+    `路线先帮你整理好了：从 ${origin} 出发，前往 ${destination}。`,
+    "你可以先按这三个顺序准备：",
+    "1. 先确认出发时间和交通方式，尽量把到达时间卡在白天。",
+    "2. 提前看看目的地当天的天气、开放情况和停车信息。",
+    "3. 如果是周末或节假日出行，建议把返程时间也一起预留出来。"
+  ].join("\n")
+}
+
+function buildGuideSummary(formData = {}) {
+  const peopleCount = normalizeText(formData.peopleCount) || "未填写人数"
+  const groupType = normalizeText(formData.groupType) || "未说明同行类型"
+  const days = normalizeText(formData.days) || "未说明天数"
+  const region = normalizeText(formData.region) || "未说明目的地区域"
+  const budget = normalizeText(formData.budget) || "未说明预算"
+
+  return [
+    "小禾先把你的出行偏好整理成一版清晰简报：",
+    `- 出行人数：${peopleCount}`,
+    `- 同行类型：${groupType}`,
+    `- 计划时长：${days}`,
+    `- 意向地区：${region}`,
+    `- 预算范围：${budget}`,
+    "",
+    "按这组条件，后面你最适合继续问我具体活动、景点、住宿或伴手礼推荐。"
+  ].join("\n")
+}
+
+function buildFeedbackSummary(formData = {}) {
+  const feedbackType = normalizeText(formData.feedbackType) || "体验反馈"
+  const feedbackText = normalizeText(formData.feedbackText)
+
+  return [
+    `这条${feedbackType}小禾已经帮你记录下来了。`,
+    feedbackText ? `你的核心想法是：${feedbackText}` : "",
+    "如果你愿意，还可以继续补充场景、时间或具体对象，这样后续整理会更准确。"
+  ].filter(Boolean).join("\n")
+}
+
 function toAgentHistory(messages = []) {
   return (messages || [])
     .map((item) => {
@@ -430,6 +473,26 @@ Page({
     this.persistConversation(conversationId, messages, firstQuestion)
   },
 
+  activateGenericMode() {
+    const nextConversationId = this.data.conversationId || createConversationId()
+
+    this.setData({
+      source: "search_input",
+      skillMode: "",
+      conversationId: nextConversationId,
+      showSkillIntro: false,
+      showSkillBadge: false,
+      skillBadgeName: "",
+      inputPlaceholder: this.data.text.inputPlaceholder,
+      introText: "",
+      quickOptions: [],
+      currentStep: "",
+      formData: {}
+    })
+
+    return nextConversationId
+  },
+
   goBack() {
     if (getCurrentPages().length > 1) {
       wx.navigateBack()
@@ -512,6 +575,12 @@ Page({
   },
 
   handleSkillReply(value) {
+    if (!this.data.currentStep || /_(done)$/u.test(this.data.currentStep)) {
+      this.activateGenericMode()
+      this.replyGeneric(value)
+      return
+    }
+
     if (this.data.skillMode === "route_planning") {
       this.handleRouteReply(value)
       return
@@ -539,8 +608,14 @@ Page({
 
     if (this.data.currentStep === "route_destination") {
       formData.destination = value
-      this.setData({ formData, currentStep: "route_done", quickOptions: [] })
-      this.appendAiMessage(`小禾先记下这条路线：从 ${formData.origin} 出发，前往 ${formData.destination}。后续路线能力完善后，小禾会继续帮你细化行程。`)
+      this.activateGenericMode()
+      this.appendAiMessage(buildRouteSummary(formData), {
+        guessQuestions: [
+          `从${formData.origin}去${formData.destination}更适合怎么玩？`,
+          `${formData.destination}附近有什么值得去的地方？`,
+          `${formData.destination}适合带什么特产回去？`
+        ]
+      })
     }
   },
 
@@ -578,8 +653,14 @@ Page({
 
     if (step === "guide_budget") {
       formData.budget = value
-      this.setData({ formData, currentStep: "guide_done", quickOptions: [] })
-      this.appendAiMessage("这些关键信息小禾先记下来了。后续攻略定制能力完善后，小禾会继续帮你整理成更完整的方案。")
+      this.activateGenericMode()
+      this.appendAiMessage(buildGuideSummary(formData), {
+        guessQuestions: [
+          `${formData.region}有哪些适合${formData.groupType || "这次同行人群"}的活动？`,
+          `${formData.region}有没有适合${formData.days || "这次行程"}的玩法安排？`,
+          `${formData.region}预算${formData.budget || "合适"}时推荐住哪里？`
+        ]
+      })
     }
   },
 
@@ -594,8 +675,14 @@ Page({
     }
 
     formData.feedbackText = value
-    this.setData({ formData, currentStep: "feedback_done", quickOptions: [] })
-    this.appendAiMessage("谢谢你愿意把这些想法告诉小禾，我已经先帮你认真记下来了。")
+    this.activateGenericMode()
+    this.appendAiMessage(buildFeedbackSummary(formData), {
+      guessQuestions: [
+        "我还想继续补充这个反馈",
+        "问小禾帮我推荐更合适的内容",
+        "附近还有哪些值得去看看？"
+      ]
+    })
   },
 
   appendAiMessage(text, extra = {}) {
