@@ -1,8 +1,26 @@
 project.private.config.json
 .env
+.env.*
+!.env.example
 node_modules/
 miniprogram_npm/
 dist/
 .temp/
 %TEMP%/
 .DS_Store
+.idea/
+.vscode/
+coverage/
+tmp/
+temp/
+logs/
+*.log
+*.tmp
+*.swp
+Thumbs.db
+
+# WeChat DevTools local files
+project.local.config.json
+
+# OS generated files
+Desktop.ini
