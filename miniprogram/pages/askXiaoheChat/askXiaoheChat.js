@@ -16,23 +16,17 @@ const SKILL_CONFIG = {
   route_planning: {
     badgeName: "路线规划",
     placeholder: "告诉小禾你的出发地和目的地",
-    intro: "把出发地、途经地或目的地告诉小禾，小禾会先帮你把路线思路整理清楚。",
-    firstQuestion: "我们先从出发地开始吧，你准备从哪里出发？",
-    quickOptions: []
+    intro: "把出发地、途经地或目的地告诉小禾，小禾会先帮你把路线思路整理清楚。"
   },
   guide_customization: {
     badgeName: "攻略定制",
     placeholder: "告诉小禾你的出行需求",
-    intro: "把人数、天数、地区和偏好告诉小禾，小禾会一步步帮你整理成更清晰的出行方案。",
-    firstQuestion: "我们先从基础信息开始吧，这次是几个人一起出行？",
-    quickOptions: ["1人", "2人", "3-5人", "6人以上"]
+    intro: "把人数、天数、地区和偏好告诉小禾，小禾会一步步帮你整理成更清晰的出行方案。"
   },
   xiaohe_feedback: {
     badgeName: "小禾树洞",
     placeholder: "说说你的想法",
-    intro: "无论是活动、商品、住宿还是体验建议，都可以直接告诉小禾，小禾会认真记下来。",
-    firstQuestion: "这次你最想和小禾聊哪一类想法？",
-    quickOptions: ["活动建议", "商品建议", "住宿建议", "体验反馈"]
+    intro: "无论是活动、商品、住宿还是体验建议，都可以直接告诉小禾，小禾会认真记下来。"
   }
 }
 
@@ -72,57 +66,31 @@ function createMessage(role, text, extra = {}) {
   }
 }
 
-function buildSkillRequest(skillMode = "", formData = {}) {
-  const normalized = Object.fromEntries(
-    Object.entries(formData || {}).map(([key, value]) => [key, normalizeText(value)])
-  )
-
-  if (skillMode === "route_planning") {
-    return {
-      question: `请根据我的路线规划需求，结合平台内容给出更实用的出行建议。我的出发地是${normalized.origin}，目的地是${normalized.destination}。`,
-      contextPayload: {
-        mode: "skill",
-        skillContext: {
-          mode: "route_planning",
-          title: "路线规划",
-          collected: normalized
-        }
-      }
-    }
-  }
-
-  if (skillMode === "guide_customization") {
-    return {
-      question: `请根据我的攻略定制需求，结合平台内容给出更适合的推荐。我这次${normalized.peopleCount}出行，同行类型是${normalized.groupType}，计划${normalized.days}，想去${normalized.region}，预算是${normalized.budget}。`,
-      contextPayload: {
-        mode: "skill",
-        skillContext: {
-          mode: "guide_customization",
-          title: "攻略定制",
-          collected: normalized
-        }
-      }
-    }
-  }
-
-  if (skillMode === "xiaohe_feedback") {
-    return {
-      question: `这是我想通过问小禾提交的一条${normalized.feedbackType || "体验反馈"}，请先理解我的反馈重点，并给出合适的回应。反馈内容是：${normalized.feedbackText}。`,
-      contextPayload: {
-        mode: "skill",
-        skillContext: {
-          mode: "xiaohe_feedback",
-          title: "小禾树洞",
-          collected: normalized
-        }
-      }
-    }
+function buildSkillContext(skillMode = "") {
+  if (!skillMode || !SKILL_CONFIG[skillMode]) {
+    return null
   }
 
   return {
-    question: "",
-    contextPayload: {}
+    mode: skillMode,
+    title: SKILL_CONFIG[skillMode].badgeName
   }
+}
+
+function buildSkillOpeningQuestion(skillMode = "") {
+  if (skillMode === "route_planning") {
+    return "用户刚进入了“路线规划”技能。请你以小禾的口吻主动开始对话，先问当前最必要的一个问题，帮助用户逐步说清出发地、目的地和出行关注点。不要一次性盘问太多。"
+  }
+
+  if (skillMode === "guide_customization") {
+    return "用户刚进入了“攻略定制”技能。请你以小禾的口吻主动开始对话，先问当前最必要的一个问题，帮助用户逐步说清人数、同行类型、天数、地区和预算偏好。不要像表单一样机械追问。"
+  }
+
+  if (skillMode === "xiaohe_feedback") {
+    return "用户刚进入了“小禾树洞”技能。请你以小禾的口吻主动开始对话，先邀请用户说出最想反馈的内容，再根据对方表达自然追问必要细节。语气要真诚，不要像在填表。"
+  }
+
+  return ""
 }
 
 function toAgentHistory(messages = []) {
@@ -339,8 +307,6 @@ Page({
     quickOptions: [],
     messages: [],
     inputValue: "",
-    currentStep: "",
-    formData: {},
     isAiLoading: false,
     genericPreferences: {
       distance: "",
@@ -363,9 +329,11 @@ Page({
       return
     }
 
-    const initialQuestion = question || this.data.text.fallbackQuestion
-    const messages = this.buildMessages({ source, question: initialQuestion, skillConfig })
-    const nextConversationId = source === "skill_entry" ? "" : createConversationId()
+    const initialQuestion = source === "skill_entry"
+      ? (skillConfig ? skillConfig.badgeName : this.data.text.brand)
+      : (question || this.data.text.fallbackQuestion)
+    const messages = this.buildMessages({ source, question: initialQuestion })
+    const nextConversationId = createConversationId()
 
     this.setData({
       source,
@@ -377,10 +345,8 @@ Page({
       skillBadgeName: skillConfig ? skillConfig.badgeName : "",
       inputPlaceholder: skillConfig ? skillConfig.placeholder : this.data.text.inputPlaceholder,
       introText: skillConfig ? skillConfig.intro : "",
-      quickOptions: skillConfig ? skillConfig.quickOptions : [],
+      quickOptions: [],
       messages,
-      currentStep: this.getInitialStep(source, skillMode),
-      formData: {},
       genericPreferences: {
         distance: "",
         budget: "",
@@ -388,10 +354,20 @@ Page({
       }
     })
 
-    if (source !== "skill_entry") {
-      this.persistConversation(nextConversationId, messages, initialQuestion)
-      this.requestGenericAnswer(initialQuestion)
+    this.persistConversation(nextConversationId, messages, initialQuestion)
+
+    if (source === "skill_entry") {
+      const openingQuestion = buildSkillOpeningQuestion(skillMode)
+      this.requestGenericAnswer(openingQuestion, {
+        contextPayload: {
+          mode: "skill",
+          skillContext: buildSkillContext(skillMode) || {}
+        }
+      })
+      return
     }
+
+    this.requestGenericAnswer(initialQuestion)
   },
 
   onUnload() {
@@ -430,8 +406,6 @@ Page({
       introText: "",
       quickOptions: [],
       messages: Array.isArray(conversation.messages) ? conversation.messages : [],
-      currentStep: "",
-      formData: {},
       genericPreferences: {
         distance: "",
         budget: "",
@@ -440,23 +414,11 @@ Page({
     })
   },
 
-  buildMessages({ source, question, skillConfig }) {
-    if (source === "skill_entry" && skillConfig) {
-      return [createMessage("ai", skillConfig.firstQuestion)]
+  buildMessages({ source, question }) {
+    if (source === "skill_entry") {
+      return []
     }
     return [createMessage("user", question)]
-  },
-
-  getInitialStep(source, skillMode) {
-    if (source !== "skill_entry") return ""
-
-    const stepMap = {
-      route_planning: "route_origin",
-      guide_customization: "guide_people",
-      xiaohe_feedback: "feedback_type"
-    }
-
-    return stepMap[skillMode] || ""
   },
 
   persistConversation(conversationId, messages, firstQuestion) {
@@ -477,30 +439,10 @@ Page({
     if (!conversationId || !messages.length) return
 
     const firstUserMessage = messages.find((item) => item.role === "user")
-    const firstQuestion = normalizeText(firstUserMessage && firstUserMessage.text)
+    const firstQuestion = normalizeText(firstUserMessage && firstUserMessage.text) || normalizeText(this.data.question)
     if (!firstQuestion) return
 
     this.persistConversation(conversationId, messages, firstQuestion)
-  },
-
-  activateGenericMode() {
-    const nextConversationId = this.data.conversationId || createConversationId()
-
-    this.setData({
-      source: "search_input",
-      skillMode: "",
-      conversationId: nextConversationId,
-      showSkillIntro: false,
-      showSkillBadge: false,
-      skillBadgeName: "",
-      inputPlaceholder: this.data.text.inputPlaceholder,
-      introText: "",
-      quickOptions: [],
-      currentStep: "",
-      formData: {}
-    })
-
-    return nextConversationId
   },
 
   goBack() {
@@ -537,7 +479,12 @@ Page({
     this.syncCurrentConversation()
 
     if (this.data.source === "skill_entry") {
-      this.handleSkillReply(value)
+      this.requestGenericAnswer(value, {
+        contextPayload: {
+          mode: "skill",
+          skillContext: buildSkillContext(this.data.skillMode) || {}
+        }
+      })
       return
     }
 
@@ -582,111 +529,6 @@ Page({
     }
 
     await this.requestGenericAnswer(value)
-  },
-
-  requestSkillAnswer(skillMode, formData) {
-    const skillRequest = buildSkillRequest(skillMode, formData)
-    const question = normalizeText(skillRequest.question)
-
-    if (!question) {
-      this.appendAiMessage("这次收集到的信息还不够完整，你可以再补充一点，小禾再继续帮你整理。")
-      return
-    }
-
-    this.activateGenericMode()
-    this.requestGenericAnswer(question, {
-      contextPayload: skillRequest.contextPayload || {}
-    })
-  },
-
-  handleSkillReply(value) {
-    if (!this.data.currentStep || /_(done)$/u.test(this.data.currentStep)) {
-      this.activateGenericMode()
-      this.replyGeneric(value)
-      return
-    }
-
-    if (this.data.skillMode === "route_planning") {
-      this.handleRouteReply(value)
-      return
-    }
-
-    if (this.data.skillMode === "guide_customization") {
-      this.handleGuideReply(value)
-      return
-    }
-
-    if (this.data.skillMode === "xiaohe_feedback") {
-      this.handleFeedbackReply(value)
-    }
-  },
-
-  handleRouteReply(value) {
-    const formData = { ...(this.data.formData || {}) }
-
-    if (this.data.currentStep === "route_origin") {
-      formData.origin = value
-      this.setData({ formData, currentStep: "route_destination", quickOptions: [] })
-      this.appendAiMessage("记下了。那这次你想去哪里？")
-      return
-    }
-
-    if (this.data.currentStep === "route_destination") {
-      formData.destination = value
-      this.requestSkillAnswer("route_planning", formData)
-    }
-  },
-
-  handleGuideReply(value) {
-    const formData = { ...(this.data.formData || {}) }
-    const step = this.data.currentStep
-
-    if (step === "guide_people") {
-      formData.peopleCount = value
-      this.setData({ formData, currentStep: "guide_group", quickOptions: ["亲子", "情侣", "朋友", "长辈"] })
-      this.appendAiMessage("这次同行的人更接近哪一类？")
-      return
-    }
-
-    if (step === "guide_group") {
-      formData.groupType = value
-      this.setData({ formData, currentStep: "guide_days", quickOptions: ["1天", "2天", "3天"] })
-      this.appendAiMessage("这次准备安排几天？")
-      return
-    }
-
-    if (step === "guide_days") {
-      formData.days = value
-      this.setData({ formData, currentStep: "guide_region", quickOptions: [] })
-      this.appendAiMessage("这次更想去哪个地区看看？")
-      return
-    }
-
-    if (step === "guide_region") {
-      formData.region = value
-      this.setData({ formData, currentStep: "guide_budget", quickOptions: ["500元内", "500-1000元", "1000-2000元"] })
-      this.appendAiMessage("这次大概想把预算控制在什么范围？")
-      return
-    }
-
-    if (step === "guide_budget") {
-      formData.budget = value
-      this.requestSkillAnswer("guide_customization", formData)
-    }
-  },
-
-  handleFeedbackReply(value) {
-    const formData = { ...(this.data.formData || {}) }
-
-    if (this.data.currentStep === "feedback_type") {
-      formData.feedbackType = value
-      this.setData({ formData, currentStep: "feedback_detail", quickOptions: [] })
-      this.appendAiMessage("可以再和小禾说具体一点吗？这样我会更方便帮你准确记录。")
-      return
-    }
-
-    formData.feedbackText = value
-    this.requestSkillAnswer("xiaohe_feedback", formData)
   },
 
   appendAiMessage(text, extra = {}) {
@@ -836,22 +678,13 @@ Page({
       cachedUserLocation = null
     }
 
-    const skillContext = extraPayload.skillContext || {}
-    const explicitRegion = normalizeText(
-      skillContext.mode === "route_planning"
-        ? skillContext.collected && skillContext.collected.destination
-        : skillContext.collected && skillContext.collected.region
-    )
-
     return {
-      mode: "generic",
+      mode: extraPayload.mode || "generic",
       question,
       location: {
         province: userInfo.province || "",
         city: userInfo.city || "",
         district: userInfo.district || "",
-        displayName: explicitRegion || "",
-        locationText: explicitRegion || "",
         latitude: cachedUserLocation && cachedUserLocation.latitude ? cachedUserLocation.latitude : "",
         longitude: cachedUserLocation && cachedUserLocation.longitude ? cachedUserLocation.longitude : ""
       },
