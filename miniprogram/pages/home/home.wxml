@@ -148,4 +148,9 @@
       </view>
     </view>
   </view>
+
+  <view class="publishFloat" bindtap="goNotePublish">
+    <view class="publishFloatPlus">+</view>
+    <view class="publishFloatText">发布笔记</view>
+  </view>
 </view>

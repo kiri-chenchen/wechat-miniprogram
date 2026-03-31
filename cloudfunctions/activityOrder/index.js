@@ -150,12 +150,6 @@ async function requireCurrentUser(openid, options = {}) {
     throw error
   }
 
-  if (options.requireBoundPhone && !user.hasBoundPhone) {
-    const error = new Error('PHONE_BIND_REQUIRED')
-    error.code = 'PHONE_BIND_REQUIRED'
-    throw error
-  }
-
   return user
 }
 
@@ -186,7 +180,7 @@ async function getOrderOwnedByUser(orderId, openid) {
 }
 
 async function createOrder(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
 
   const activityId = normalizeText(event.activityId)
   const travelDate = normalizeText(event.travelDate)
@@ -308,7 +302,7 @@ async function createOrder(event, openid) {
 }
 
 async function listMine(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
 
   const page = Math.max(1, normalizeNumber(event.page, 1))
   const pageSize = Math.min(100, Math.max(1, normalizeNumber(event.pageSize, 20)))
@@ -334,7 +328,7 @@ async function listMine(event, openid) {
 }
 
 async function detail(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
   const order = await getOrderOwnedByUser(event.id, openid)
   return {
     success: true,
@@ -343,7 +337,7 @@ async function detail(event, openid) {
 }
 
 async function mockPay(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
   const order = await getOrderOwnedByUser(event.id, openid)
   const status = buildOrderStatus(order)
 
@@ -367,7 +361,7 @@ async function mockPay(event, openid) {
 }
 
 async function cancel(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
   const order = await getOrderOwnedByUser(event.id, openid)
   const status = buildOrderStatus(order)
 
@@ -392,7 +386,7 @@ async function cancel(event, openid) {
 }
 
 async function requestRefund(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
   const order = await getOrderOwnedByUser(event.id, openid)
   const status = buildOrderStatus(order)
 
@@ -416,7 +410,7 @@ async function requestRefund(event, openid) {
 }
 
 async function submitReview(event, openid) {
-  await requireCurrentUser(openid, { requireBoundPhone: true })
+  await requireCurrentUser(openid)
   const order = await getOrderOwnedByUser(event.id, openid)
   const status = buildOrderStatus(order)
   const score = Math.min(5, Math.max(1, normalizeNumber(event.score, 5)))

@@ -1,6 +1,10 @@
 .page { min-height: 100vh; background: #fff; }
 .nav { display:flex; align-items:center; padding:0 24rpx 14rpx; background:#fff; position:sticky; top:0; z-index:10; }
-.back,.count { width:56rpx; text-align:center; font-size:34rpx; color:#111; }
+.backBtn,
+.count { width:56rpx; text-align:center; color:#111; flex-shrink:0; }
+.backBtn { height:56rpx; display:flex; align-items:center; justify-content:center; position:relative; z-index:2; }
+.backArrow { width:20rpx; height:20rpx; border-left:4rpx solid #1f1f1f; border-bottom:4rpx solid #1f1f1f; transform: rotate(45deg); }
+.count { font-size:34rpx; }
 .tabs { flex:1; display:flex; justify-content:flex-start; gap:72rpx; margin-left:24rpx; }
 .tab { position:relative; padding:20rpx 0; font-size:32rpx; color:#777; }
 .tab.active { color:#111; font-weight:700; }

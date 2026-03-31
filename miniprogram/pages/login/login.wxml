@@ -11,13 +11,8 @@
     </view>
 
     <view class="heroBlock">
-      <view class="heroTitle">{{hasWechatUser ? text.titleBindPhone : text.titleWechat}}</view>
-      <view class="heroDesc" wx:if="{{!hasWechatUser}}">
-        {{text.descBeforeLogin}}
-      </view>
-      <view class="heroDesc" wx:else>
-        {{text.descAfterLogin}}
-      </view>
+      <view class="heroTitle">{{text.titleWechat}}</view>
+      <view class="heroDesc">{{text.descBeforeLogin}}</view>
     </view>
 
     <view class="formCard">
@@ -27,24 +22,12 @@
       </view>
 
       <button
-        wx:if="{{!hasWechatUser}}"
         class="primaryButton"
         bindtap="onWechatLogin"
         loading="{{loading}}"
         disabled="{{loading}}"
       >
         {{text.btnWechatLogin}}
-      </button>
-
-      <button
-        wx:if="{{hasWechatUser}}"
-        class="primaryButton"
-        open-type="getPhoneNumber"
-        bindgetphonenumber="onGetPhoneNumber"
-        loading="{{loading}}"
-        disabled="{{loading}}"
-      >
-        {{text.btnWechatPhone}}
       </button>
 
       <view class="agreement">{{text.agreementSummary}}</view>

@@ -5,7 +5,7 @@
     <view class="icon-btn" bindtap="onAddTap">＋</view>
   </view>
 
-  <scroll-view class="story-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+  <scroll-view wx:if="{{storyList.length}}" class="story-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
     <view
       wx:for="{{storyList}}"
       wx:key="id"
@@ -39,7 +39,10 @@
       data-id="{{item.id}}"
       bindtap="openRow"
     >
-      <view class="row-avatar" style="background: {{item.avatarColor}};">{{item.avatarText}}</view>
+      <view wx:if="{{item.avatarUrl}}" class="row-avatar row-avatar-image-wrap">
+        <image class="row-avatar-image" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+      </view>
+      <view wx:else class="row-avatar" style="background: {{item.avatarColor}};">{{item.avatarText}}</view>
       <view class="row-main">
         <view class="row-title">{{item.title}}</view>
         <view class="row-subtitle">{{item.subtitle || item.preview}}</view>

@@ -1,4 +1,5 @@
 const app = getApp()
+const { resolveMediaSource } = require('../../utils/mediaAssets')
 
 const DEFAULT_AVATAR = '/images/avatar.png'
 const MAX_AVATAR_SOURCE_SIZE = 2 * 1024 * 1024
@@ -16,7 +17,6 @@ const TEXT = {
   skippedProfile: '\u5df2\u8df3\u8fc7\u8d44\u6599\u586b\u5199',
   profileSaved: '\u8d44\u6599\u5df2\u4fdd\u5b58',
   title: '\u5b8c\u5584\u4e2a\u4eba\u8d44\u6599',
-  skip: '\u8df3\u8fc7',
   avatar: '\u5934\u50cf',
   avatarHint: '\u62cd\u7167\u6216\u4ece\u76f8\u518c\u9009\u62e9',
   nickname: '\u6635\u79f0',
@@ -25,14 +25,15 @@ const TEXT = {
   birth: '\u751f\u65e5',
   enableBirth: '\u662f\u5426\u586b\u5199\u751f\u65e5',
   birthUnknown: '\u672a\u586b\u5199\u65f6\u5c06\u663e\u793a\u4e3a\u672a\u77e5',
-  saveAndContinue: '\u4fdd\u5b58\u5e76\u7ee7\u7eed',
+  nextStep: '\u4e0b\u4e00\u6b65',
+  save: '\u4fdd\u5b58',
 }
 
 const GENDERS = [TEXT.unknown, TEXT.male, TEXT.female]
 
 function ensureBoundSession() {
   const app = getApp()
-  if (app.hasActiveSession && app.hasActiveSession({ requireBoundPhone: true })) {
+  if (app.hasActiveSession && app.hasActiveSession()) {
     return true
   }
 
@@ -50,11 +51,37 @@ function ensureBoundSession() {
   return false
 }
 
+function authorizeLocationAsync() {
+  return new Promise((resolve, reject) => {
+    wx.authorize({
+      scope: 'scope.userLocation',
+      success: resolve,
+      fail: reject,
+    })
+  })
+}
+
+function getLocationAsync(timeout = 8000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('getLocation timeout')), timeout)
+    wx.getLocation({
+      type: 'gcj02',
+      success: (res) => {
+        clearTimeout(timer)
+        resolve(res)
+      },
+      fail: (err) => {
+        clearTimeout(timer)
+        reject(err)
+      },
+    })
+  })
+}
+
 Page({
   data: {
     text: {
       title: TEXT.title,
-      skip: TEXT.skip,
       avatar: TEXT.avatar,
       avatarHint: TEXT.avatarHint,
       nickname: TEXT.nickname,
@@ -63,10 +90,13 @@ Page({
       birth: TEXT.birth,
       enableBirth: TEXT.enableBirth,
       birthUnknown: TEXT.birthUnknown,
-      saveAndContinue: TEXT.saveAndContinue,
+      nextStep: TEXT.nextStep,
+      save: TEXT.save,
     },
     mode: 'register',
-    avatar: DEFAULT_AVATAR,
+    avatarPreview: DEFAULT_AVATAR,
+    avatarLocalPath: '',
+    avatarFileId: '',
     nickname: '',
     gender: TEXT.unknown,
     genders: GENDERS,
@@ -83,9 +113,10 @@ Page({
     selectedMonthIndex: 0,
     selectedDayIndex: 0,
     loading: false,
+    avatarUploading: false,
   },
 
-  onLoad(options) {
+  async onLoad(options) {
     this.initializeDatePickers()
 
     const mode = options.mode || 'register'
@@ -101,16 +132,32 @@ Page({
         }
       : this.data.birth
 
+    const rawAvatar = userInfo.avatarUrl || ''
+    const resolvedAvatar = await resolveMediaSource(rawAvatar, userInfo.avatarResolvedUrl || DEFAULT_AVATAR)
+
     this.setData({
       mode,
-      avatar: userInfo.avatarUrl || DEFAULT_AVATAR,
+      avatarPreview: resolvedAvatar || DEFAULT_AVATAR,
+      avatarLocalPath: '',
+      avatarFileId: rawAvatar || '',
       nickname: userInfo.nickName || '',
       gender: userInfo.gender || TEXT.unknown,
       birthEnabled: !!hasValidBirthDate,
       birth: initBirth,
     })
 
+    if (rawAvatar && resolvedAvatar && resolvedAvatar !== userInfo.avatarResolvedUrl) {
+      app.setUserInfo({
+        ...userInfo,
+        avatarResolvedUrl: resolvedAvatar,
+      })
+    }
+
     this.syncBirthPickerIndices(initBirth)
+
+    if (mode === 'register' && !userInfo.locationChoiceMade) {
+      this.tryRequestLocationOnEntry()
+    }
   },
 
   initializeDatePickers() {
@@ -183,30 +230,45 @@ Page({
 
   async uploadAvatar(imagePath) {
     try {
+      this.setData({
+        avatarPreview: imagePath,
+        avatarLocalPath: imagePath,
+        avatarUploading: true,
+      })
       wx.showLoading({ title: TEXT.uploading })
       const uploadRes = await wx.cloud.uploadFile({
         cloudPath: `avatars/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`,
         filePath: imagePath,
       })
 
-      this.setData({ avatar: uploadRes.fileID })
+      const resolvedAvatar = await resolveMediaSource(uploadRes.fileID, imagePath)
+      this.setData({
+        avatarFileId: uploadRes.fileID,
+        avatarPreview: resolvedAvatar || imagePath,
+      })
       wx.showToast({ title: TEXT.uploadSuccess, icon: 'success' })
     } catch (err) {
       console.error('[profile] upload avatar failed', err)
-      wx.showToast({ title: TEXT.uploadFailed, icon: 'none' })
+      wx.showToast({
+        title: '头像预览已保留，上传失败请稍后重试',
+        icon: 'none',
+      })
     } finally {
+      this.setData({ avatarUploading: false })
       wx.hideLoading()
     }
   },
 
   onAvatarError() {
-    this.setData({
-      avatar: DEFAULT_AVATAR,
-    })
+    const fallback = this.data.avatarLocalPath || DEFAULT_AVATAR
+    if (this.data.avatarPreview !== fallback) {
+      this.setData({ avatarPreview: fallback })
+    }
   },
 
   onNicknameInput(e) {
-    this.setData({ nickname: e.detail.value })
+    const value = String(e.detail.value || '').slice(0, 10)
+    this.setData({ nickname: value })
   },
 
   pickerGender(e) {
@@ -240,23 +302,78 @@ Page({
     })
   },
 
-  async onSkip() {
-    await this.submitProfile(true)
-  },
-
   async onSave() {
     await this.submitProfile(false)
   },
 
-  async submitProfile(isSkip) {
+  async tryRequestLocationOnEntry() {
+    if (!ensureBoundSession() || this.locationPromptTriggered) return
+    this.locationPromptTriggered = true
+
+    try {
+      let userLocation = null
+      const locationRes = await getLocationAsync()
+      userLocation = {
+        latitude: locationRes.latitude,
+        longitude: locationRes.longitude,
+      }
+      wx.setStorageSync('userLocation', userLocation)
+      await this.saveLocationChoice(true, userLocation)
+    } catch (err) {
+      console.warn('[profile] request location on entry failed', err)
+      await this.saveLocationChoice(false, null)
+    }
+  },
+
+  async saveLocationChoice(locationAuthorized, location) {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: 'userManage',
+        data: {
+          action: 'updateOnboarding',
+          payload: {
+            locationAuthorized,
+            locationChoiceMade: true,
+            userLocation: location || null,
+          },
+        },
+      })
+
+      if (res.result && res.result.success) {
+        app.setUserInfo(res.result.userInfo)
+      }
+    } catch (err) {
+      console.error('[profile] save location choice failed', err)
+    } finally {
+      const currentUser = app.getUserInfo() || {}
+      if (!currentUser.locationChoiceMade) {
+        app.setUserInfo({
+          ...currentUser,
+          locationChoiceMade: true,
+          locationAuthorized,
+          userLocation: location || null,
+        })
+      }
+    }
+  },
+
+  async submitProfile() {
     if (!ensureBoundSession()) {
+      return
+    }
+
+    if (this.data.avatarUploading) {
+      wx.showToast({
+        title: '头像上传中，请稍候',
+        icon: 'none',
+      })
       return
     }
 
     this.setData({ loading: true })
     try {
       const profile = {
-        avatarUrl: this.data.avatar === DEFAULT_AVATAR ? '' : this.data.avatar,
+        avatarUrl: this.data.avatarFileId || '',
         nickName: this.data.nickname.trim(),
         gender: this.data.gender || TEXT.unknown,
         birthDate: this.data.birthEnabled
@@ -278,11 +395,23 @@ Page({
         return
       }
 
-      app.setUserInfo(result.result.userInfo)
+      const nextUserInfo = {
+        ...result.result.userInfo,
+        avatarUrl: this.data.avatarFileId || result.result.userInfo.avatarUrl || '',
+        avatarPreviewUrl: this.data.avatarLocalPath || this.data.avatarPreview || '',
+        avatarResolvedUrl: this.data.avatarPreview || result.result.userInfo.avatarResolvedUrl || '',
+      }
+
+      app.setUserInfo(nextUserInfo)
       wx.showToast({
-        title: isSkip ? TEXT.skippedProfile : TEXT.profileSaved,
+        title: TEXT.profileSaved,
         icon: 'success',
       })
+
+      if (this.data.mode === 'edit') {
+        wx.navigateBack()
+        return
+      }
 
       wx.redirectTo({ url: '/pages/dnaTag/dnaTag?mode=setup' })
     } catch (err) {

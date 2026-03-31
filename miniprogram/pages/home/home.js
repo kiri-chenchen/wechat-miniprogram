@@ -663,4 +663,10 @@ Page({
       url: '/pages/mall/mall',
     })
   },
+
+  goNotePublish() {
+    wx.navigateTo({
+      url: '/pages/notePublish/notePublish',
+    })
+  },
 })

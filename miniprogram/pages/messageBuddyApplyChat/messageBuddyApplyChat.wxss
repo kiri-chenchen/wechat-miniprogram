@@ -2,7 +2,9 @@
 .notice { margin:24rpx; padding:20rpx 24rpx; border-radius:20rpx; background:#eef3ff; color:#5c6fa7; font-size:24rpx; line-height:1.7; }
 .chat-list { padding:0 24rpx 24rpx; }
 .msg { display:flex; margin-bottom:18rpx; }
+.msg.mine { justify-content:flex-end; }
 .bubble { max-width:82%; padding:20rpx 22rpx; border-radius:24rpx; background:#fff; color:#222; box-shadow:0 8rpx 18rpx rgba(0,0,0,0.04); }
+.mine .bubble { background:#d7f0ff; }
 .time { margin-top:10rpx; font-size:22rpx; color:#8b8b8b; }
 .composer { position:fixed; left:0; right:0; bottom:0; display:flex; gap:16rpx; align-items:center; padding:16rpx 24rpx 24rpx; background:#fff; border-top:1rpx solid #efefef; }
 .input { flex:1; height:78rpx; padding:0 24rpx; border-radius:999rpx; background:#f4f5f7; font-size:28rpx; }

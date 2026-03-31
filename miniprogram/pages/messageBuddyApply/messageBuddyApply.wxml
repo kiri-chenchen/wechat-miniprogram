@@ -1,9 +1,13 @@
 <view class="page">
   <view class="notice">别人给你发送的搭子申请会先出现在这里，回复后会自动转入主页正式会话。</view>
   <view wx:for="{{list}}" wx:key="id" class="row" data-id="{{item.id}}" bindtap="openDetail">
-    <view class="avatar" style="background: {{item.avatarColor}};">{{item.avatarText}}</view>
+    <view wx:if="{{item.avatarUrl}}" class="avatar avatarImageWrap">
+      <image class="avatarImage" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+    </view>
+    <view wx:else class="avatar" style="background: {{item.avatarColor}};">{{item.avatarText}}</view>
     <view class="main">
       <view class="title">{{item.userName}}</view>
+      <view class="direction">{{item.directionText}}</view>
       <view class="preview">{{item.preview}}</view>
     </view>
     <view class="side">

@@ -1,12 +1,4 @@
 <view class="page">
-  <view class="header">
-    <view>
-      <view class="title">{{text.setupTitle}}</view>
-      <view class="desc">{{text.desc}}</view>
-    </view>
-    <view class="skip" bindtap="onSkip" wx:if="{{mode !== 'edit'}}">{{text.skip}}</view>
-  </view>
-
   <scroll-view scroll-y class="content">
     <view class="section">
       <view class="sectionTitle">{{text.travelModesTitle}}</view>
@@ -37,11 +29,26 @@
         </view>
       </view>
     </view>
+
+    <view class="section">
+      <view class="sectionTitle">{{text.buddyTagsTitle}}</view>
+      <view class="tagList">
+        <view
+          wx:for="{{buddyTags}}"
+          wx:key="*this"
+          class="tag {{selectedBuddyTagMap[item] ? 'active' : ''}}"
+          data-tag="{{item}}"
+          bindtap="toggleBuddyTag"
+        >
+          {{item}}
+        </view>
+      </view>
+    </view>
   </scroll-view>
 
   <view class="footer">
     <button class="btnSave" bindtap="onSave" loading="{{loading}}" disabled="{{loading}}">
-      {{text.saveAndEnterHome}}
+      {{text.saveButton}}
     </button>
   </view>
 </view>

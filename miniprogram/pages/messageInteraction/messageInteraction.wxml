@@ -1,7 +1,9 @@
 <view class="page">
   <view class="nav" style="padding-top: {{statusBarHeight}}px;">
-    <view class="back" bindtap="goBack">〈</view>
-    <view class="count">{{badgeCount}}</view>
+    <view class="backBtn" bindtap="goBack">
+      <view class="backArrow"></view>
+    </view>
+    <view class="count">{{badgeCount > 0 ? badgeCount : ''}}</view>
     <view class="tabs">
       <view class="tab {{activeTab === 'interactive' ? 'active' : ''}}" bindtap="toggleFilterPanel">
         <text>互动消息</text>

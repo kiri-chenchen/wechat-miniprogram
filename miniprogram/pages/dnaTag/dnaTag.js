@@ -1,15 +1,13 @@
 const app = getApp()
 
 const TEXT = {
-  setupTitle: '\u5b9a\u5236\u6211\u7684\u519c\u65c5 DNA',
-  desc: '\u9009\u62e9\u65c5\u884c\u65b9\u5f0f\u548c\u65c5\u884c\u73a9\u6cd5\uff0c\u5e2e\u52a9\u6211\u4eec\u63a8\u8350\u66f4\u9002\u5408\u4f60\u7684\u6d3b\u52a8\u4e0e\u5546\u54c1\u3002',
-  skip: '\u8df3\u8fc7',
   travelModesTitle: '\u65c5\u884c\u65b9\u5f0f',
   travelStylesTitle: '\u65c5\u884c\u73a9\u6cd5',
+  buddyTagsTitle: '\u642d\u5b50\u504f\u597d',
   saveAndEnterHome: '\u4fdd\u5b58\u5e76\u8fdb\u5165\u9996\u9875',
+  saveOnly: '\u4fdd\u5b58',
   saveFailed: '\u4fdd\u5b58\u5931\u8d25',
   saved: 'DNA \u5df2\u4fdd\u5b58',
-  skipped: '\u5df2\u8df3\u8fc7 DNA \u8bbe\u7f6e',
   travelModes: [
     '\u81ea\u7531\u884c',
     '\u8ddf\u56e2\u6e38',
@@ -30,6 +28,16 @@ const TEXT = {
     '\u751f\u6001\u89c2\u5149',
     '\u521b\u610f\u6444\u5f71',
   ],
+  buddyTags: [
+    '\u5468\u672b\u540c\u6e38',
+    '\u6444\u5f71\u642d\u5b50',
+    '\u4eb2\u5b50\u642d\u5b50',
+    '\u81ea\u7531\u884c\u642d\u5b50',
+    '\u63a5\u53d7\u62fc\u8f66',
+    '\u4e24\u4eba\u540c\u884c',
+    '3-4\u4eba\u5c0f\u56e2',
+    '\u4eba\u6570\u7075\u6d3b',
+  ],
 }
 
 function buildTagMap(tags) {
@@ -41,7 +49,7 @@ function buildTagMap(tags) {
 
 function ensureBoundSession() {
   const app = getApp()
-  if (app.hasActiveSession && app.hasActiveSession({ requireBoundPhone: true })) {
+  if (app.hasActiveSession && app.hasActiveSession()) {
     return true
   }
 
@@ -62,20 +70,21 @@ function ensureBoundSession() {
 Page({
   data: {
     text: {
-      setupTitle: TEXT.setupTitle,
-      desc: TEXT.desc,
-      skip: TEXT.skip,
       travelModesTitle: TEXT.travelModesTitle,
       travelStylesTitle: TEXT.travelStylesTitle,
-      saveAndEnterHome: TEXT.saveAndEnterHome,
+      buddyTagsTitle: TEXT.buddyTagsTitle,
+      saveButton: TEXT.saveAndEnterHome,
     },
     mode: 'setup',
     travelModes: TEXT.travelModes,
     travelStyles: TEXT.travelStyles,
+    buddyTags: TEXT.buddyTags,
     selectedModes: [],
     selectedStyles: [],
+    selectedBuddyTags: [],
     selectedModeMap: {},
     selectedStyleMap: {},
+    selectedBuddyTagMap: {},
     loading: false,
   },
 
@@ -83,16 +92,39 @@ Page({
     const mode = options.mode || 'setup'
     const userInfo = app.getUserInfo() || {}
     const dnaTags = userInfo.dnaTags || []
+    const buddyTags = this.getBuddyTags(userInfo)
     const selectedModes = dnaTags.filter((tag) => TEXT.travelModes.includes(tag))
     const selectedStyles = dnaTags.filter((tag) => TEXT.travelStyles.includes(tag))
 
     this.setData({
       mode,
+      'text.saveButton': mode === 'edit' ? TEXT.saveOnly : TEXT.saveAndEnterHome,
       selectedModes,
       selectedStyles,
+      selectedBuddyTags: buddyTags,
       selectedModeMap: buildTagMap(selectedModes),
       selectedStyleMap: buildTagMap(selectedStyles),
+      selectedBuddyTagMap: buildTagMap(buddyTags),
     })
+  },
+
+  getBuddyTags(userInfo = {}) {
+    const directTags = Array.isArray(userInfo.buddyTags) ? userInfo.buddyTags : []
+    if (directTags.length) {
+      return directTags.filter((tag) => TEXT.buddyTags.includes(tag))
+    }
+
+    const buddyIntent = userInfo.buddyIntent || {}
+    const legacyTags = []
+    if (buddyIntent.buddyType === 'casual') legacyTags.push('周末同游')
+    if (buddyIntent.buddyType === 'photo') legacyTags.push('摄影搭子')
+    if (buddyIntent.buddyType === 'parent_child') legacyTags.push('亲子搭子')
+    if (buddyIntent.buddyType === 'free_travel') legacyTags.push('自由行搭子')
+    if (buddyIntent.acceptCarpool === 'yes') legacyTags.push('接受拼车')
+    if (buddyIntent.groupPreference === 'two') legacyTags.push('两人同行')
+    if (buddyIntent.groupPreference === 'small_group') legacyTags.push('3-4人小团')
+    if (buddyIntent.groupPreference === 'flexible') legacyTags.push('人数灵活')
+    return Array.from(new Set(legacyTags))
   },
 
   toggleModeTag(e) {
@@ -101,6 +133,10 @@ Page({
 
   toggleStyleTag(e) {
     this.toggleTag('selectedStyles', 'selectedStyleMap', e.currentTarget.dataset.tag)
+  },
+
+  toggleBuddyTag(e) {
+    this.toggleTag('selectedBuddyTags', 'selectedBuddyTagMap', e.currentTarget.dataset.tag)
   },
 
   toggleTag(field, mapField, tag) {
@@ -114,16 +150,13 @@ Page({
     })
   },
 
-  async onSkip() {
-    await this.submitTags([])
-  },
-
   async onSave() {
     const tags = [...this.data.selectedModes, ...this.data.selectedStyles]
-    await this.submitTags(tags)
+    const buddyTags = [...this.data.selectedBuddyTags]
+    await this.submitTags(tags, buddyTags)
   },
 
-  async submitTags(tags) {
+  async submitTags(tags, buddyTags) {
     if (!ensureBoundSession()) {
       return
     }
@@ -135,6 +168,7 @@ Page({
         data: {
           action: 'updateDNATags',
           tags,
+          buddyTags,
         },
       })
 
@@ -145,7 +179,7 @@ Page({
 
       app.setUserInfo(res.result.userInfo)
       wx.showToast({
-        title: tags.length ? TEXT.saved : TEXT.skipped,
+        title: TEXT.saved,
         icon: 'success',
       })
 

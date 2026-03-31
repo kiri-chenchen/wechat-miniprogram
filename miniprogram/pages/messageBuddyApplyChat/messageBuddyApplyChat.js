@@ -8,8 +8,10 @@ const {
 Page({
   data: {
     id: '',
+    userName: '',
     messages: [],
     inputValue: '',
+    direction: 'incoming',
   },
 
   onLoad(options) {
@@ -29,10 +31,16 @@ Page({
       return
     }
     this.setData({
+      userName: detail.userName || '',
+      direction: detail.direction || 'incoming',
+      inputValue: detail.direction === 'outgoing' ? (detail.draftText || detail.preview || '') : '',
       messages: (detail.messages || []).map((item) => ({
         ...item,
         timeText: formatConversationTime(item.updatedAt),
       })),
+    })
+    wx.setNavigationBarTitle({
+      title: detail.userName || '搭子申请',
     })
   },
 

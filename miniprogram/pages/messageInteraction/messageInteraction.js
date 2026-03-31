@@ -37,7 +37,8 @@ Page({
     const state = getMessageState()
     const selectedFilter = (state.interactiveFilters || []).find((item) => item.key === this.data.selectedFilterKey)
     this.setData({
-      badgeCount: (state.interactions || []).length + (state.newFollowers || []).length,
+      badgeCount: (state.interactions || []).filter((item) => !item.read).length
+        + (state.newFollowers || []).filter((item) => !item.read).length,
       filterOptions: state.interactiveFilters || [],
       interactionList: getInteractiveList(selectedFilter ? selectedFilter.key : 'all').map((item) => ({
         ...item,

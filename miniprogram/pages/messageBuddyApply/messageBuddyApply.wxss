@@ -2,8 +2,11 @@
 .notice { margin:24rpx; padding:20rpx 24rpx; border-radius:22rpx; background:#eef3ff; color:#5c6fa7; font-size:24rpx; line-height:1.7; }
 .row { display:flex; align-items:center; padding:24rpx; border-top:1rpx solid #f5f5f5; }
 .avatar { width:88rpx; height:88rpx; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:32rpx; font-weight:700; flex-shrink:0; }
+.avatarImageWrap { overflow:hidden; background:#f2f2f2; }
+.avatarImage { width:88rpx; height:88rpx; border-radius:50%; display:block; }
 .main { flex:1; margin-left:20rpx; min-width:0; }
 .title { font-size:32rpx; font-weight:700; color:#111; }
+.direction { margin-top:6rpx; font-size:22rpx; color:#6e89ff; line-height:1.4; }
 .side { width:72rpx; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; flex-shrink:0; }
 .time { font-size:24rpx; color:#aaa; line-height:1; }
 .preview { margin-top:10rpx; font-size:26rpx; color:#777; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

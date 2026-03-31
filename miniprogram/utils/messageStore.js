@@ -394,51 +394,11 @@ function formatConversationTime(timestamp) {
 
 function buildHomeRows(state) {
   const safeState = state || ensureState()
-  const interactiveCount = normalizeList(safeState.interactions).filter((item) => !item.read).length
-    + normalizeList(safeState.newFollowers).length
-  const merchantUnread = normalizeList(safeState.merchantConversations).reduce((sum, item) => sum + Number(item.unread || 0), 0)
-  const platformUnread = Number((safeState.platformSupportConversation && safeState.platformSupportConversation.unread) || 0)
-  const buddyUnread = normalizeList(safeState.buddyApplications).reduce((sum, item) => sum + Number(item.unread || 0), 0)
-  const latestMerchant = sortByUpdatedAt(safeState.merchantConversations)[0]
-  const latestGuarantee = sortByUpdatedAt(safeState.platformGuarantees)[0]
-  const latestBuddy = sortByUpdatedAt(safeState.buddyApplications)[0]
+  const buddyApplications = normalizeList(safeState.buddyApplications).filter((item) => item.direction)
+  const buddyUnread = buddyApplications.reduce((sum, item) => sum + Number(item.unread || 0), 0)
+  const latestBuddy = sortByUpdatedAt(buddyApplications)[0]
 
   const specialRows = [
-    {
-      id: 'interactive-home',
-      kind: 'entry',
-      entryType: 'interactive',
-      title: '互动消息',
-      subtitle: normalizeList(safeState.interactions)[0]
-        ? `${safeState.interactions[0].actorName}${safeState.interactions[0].actionText}`
-        : '查看赞、提及和评论',
-      updatedAt: (normalizeList(safeState.interactions)[0] && safeState.interactions[0].updatedAt) || Date.now(),
-      unread: interactiveCount,
-      avatarText: '互',
-      avatarColor: '#ff4f8a',
-    },
-    {
-      id: 'merchant-home',
-      kind: 'entry',
-      entryType: 'merchant',
-      title: '商家消息',
-      subtitle: latestMerchant ? latestMerchant.preview : '和商家客服沟通订单、集合和出行细节',
-      updatedAt: latestMerchant ? latestMerchant.updatedAt : Date.now() - 1000,
-      unread: merchantUnread,
-      avatarText: '商',
-      avatarColor: '#ff9f43',
-    },
-    {
-      id: 'platform-home',
-      kind: 'entry',
-      entryType: 'platform',
-      title: '平台消息',
-      subtitle: latestGuarantee ? latestGuarantee.subtitle : '平台客服与平台服务保障',
-      updatedAt: latestGuarantee ? latestGuarantee.updatedAt : Date.now() - 2000,
-      unread: platformUnread,
-      avatarText: '平',
-      avatarColor: '#4caf70',
-    },
     {
       id: 'buddy-home',
       kind: 'entry',
@@ -452,7 +412,9 @@ function buildHomeRows(state) {
     },
   ]
 
-  const conversationRows = sortByUpdatedAt(safeState.formalConversations).map((item) => ({
+  const conversationRows = sortByUpdatedAt(safeState.formalConversations)
+    .filter((item) => item.kind === 'buddy')
+    .map((item) => ({
     ...item,
     kind: 'conversation',
   }))
@@ -462,15 +424,28 @@ function buildHomeRows(state) {
 
 function buildStoryList(state) {
   const safeState = state || ensureState()
-  return clone(sortByUpdatedAt(safeState.noteStories)).map((item) => ({
-    id: item.id,
-    title: item.userName,
-    avatarText: item.avatarText,
-    avatarColor: item.avatarColor,
-    unread: 0,
-    noteId: item.noteId,
-    noteTitle: item.noteTitle,
-  }))
+  const relatedNames = uniqueList(
+    normalizeList(safeState.buddyApplications)
+      .map((item) => item.userName)
+      .concat(normalizeList(safeState.formalConversations).map((item) => item.title))
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+  )
+
+  return clone(
+    sortByUpdatedAt(safeState.noteStories)
+      .filter((item) => relatedNames.includes(String(item.userName || '').trim()))
+      .map((item) => ({
+        id: item.id,
+        title: item.userName,
+        avatarUrl: item.avatarUrl || '',
+        avatarText: item.avatarText,
+        avatarColor: item.avatarColor,
+        unread: 0,
+        noteId: item.noteId,
+        noteTitle: item.noteTitle,
+      }))
+  )
 }
 
 function getInteractiveList(filterKey) {
@@ -484,6 +459,10 @@ function getInteractiveList(filterKey) {
 function markInteractionsRead() {
   const state = ensureState()
   state.interactions = normalizeList(state.interactions).map((item) => ({
+    ...item,
+    read: true,
+  }))
+  state.newFollowers = normalizeList(state.newFollowers).map((item) => ({
     ...item,
     read: true,
   }))
@@ -564,13 +543,46 @@ function getPlatformGuarantees() {
 }
 
 function getBuddyApplications() {
-  return clone(sortByUpdatedAt(ensureState().buddyApplications))
+  return clone(sortByUpdatedAt(ensureState().buddyApplications).filter((item) => item.direction))
 }
 
 function getBuddyApplication(id) {
   const state = ensureState()
   const target = normalizeList(state.buddyApplications).find((item) => item.id === id)
   return clone(target || null)
+}
+
+function createBuddyApplicationFromMatch(payload = {}) {
+  const userName = String(payload.userName || '').trim()
+  const openingText = String(payload.openingText || '').trim()
+  if (!userName || !openingText) {
+    return null
+  }
+
+  const state = ensureState()
+  const now = Date.now()
+  const id = `buddy-apply-local-${now}`
+  const application = {
+    id,
+    userName,
+    avatarUrl: payload.avatarUrl || '',
+    avatarText: payload.avatarText || userName.slice(0, 1) || '搭',
+    avatarColor: payload.avatarColor || '#6e89ff',
+    preview: openingText,
+    draftText: openingText,
+    updatedAt: now,
+    unread: 0,
+    direction: payload.direction || 'outgoing',
+    matchScore: Number(payload.matchScore || 0),
+    matchReason: payload.matchReason || '',
+    messages: [],
+  }
+
+  state.buddyApplications = [application].concat(
+    normalizeList(state.buddyApplications).filter((item) => item.id !== id)
+  )
+  writeStorageState(state)
+  return clone(application)
 }
 
 function replyToBuddyApplication(id, text) {
@@ -598,6 +610,7 @@ function replyToBuddyApplication(id, text) {
     .concat({
       id: conversationId,
       title: target.userName,
+      avatarUrl: target.avatarUrl || '',
       avatarText: target.avatarText,
       avatarColor: target.avatarColor,
       preview: content,
@@ -703,6 +716,7 @@ module.exports = {
   getPlatformGuarantees,
   getBuddyApplications,
   getBuddyApplication,
+  createBuddyApplicationFromMatch,
   markBuddyApplicationRead,
   getNoteStories,
   getNoteById,

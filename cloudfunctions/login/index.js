@@ -9,10 +9,18 @@ function buildNewUser(openid) {
     nickName: '',
     avatarUrl: '',
     phoneNumber: '',
-    hasBoundPhone: false,
+    hasBoundPhone: true,
     gender: 'unknown',
     birthDate: '',
     dnaTags: [],
+    buddyTags: [],
+    buddyIntent: {
+      availability: '',
+      buddyType: '',
+      acceptCarpool: '',
+      groupPreference: '',
+    },
+    buddyIntentCompleted: false,
     role: 'user',
     profileCompleted: false,
     dnaCompleted: false,
@@ -33,6 +41,16 @@ async function getUserByOpenid(openid) {
 async function ensureWechatUser(openid) {
   const existingUser = await getUserByOpenid(openid)
   if (existingUser) {
+    if (existingUser.hasBoundPhone === false) {
+      await db.collection('users').doc(existingUser._id).update({
+        data: {
+          hasBoundPhone: true,
+          updatedAt: db.serverDate(),
+        },
+      })
+      const fresh = await db.collection('users').doc(existingUser._id).get()
+      return { success: true, userInfo: fresh.data, isNewUser: false }
+    }
     return { success: true, userInfo: existingUser, isNewUser: false }
   }
 
@@ -45,65 +63,12 @@ async function ensureWechatUser(openid) {
   }
 }
 
-async function bindPhoneByWechat(openid, code) {
-  if (!code) return { success: false, message: 'MISSING_PHONE_AUTH_CODE' }
-
-  const currentUser = await getUserByOpenid(openid)
-  if (!currentUser) return { success: false, message: 'WECHAT_LOGIN_REQUIRED' }
-
-  const phoneRes = await cloud.openapi.phonenumber.getPhoneNumber({ code })
-  const phoneInfo = phoneRes.phoneInfo || {}
-  const phoneNumber = phoneInfo.phoneNumber || phoneInfo.purePhoneNumber || ''
-  if (!phoneNumber) return { success: false, message: 'PHONE_NUMBER_NOT_FOUND' }
-
-  await db.runTransaction(async (transaction) => {
-    const bindingRef = transaction.collection('phoneBindings').doc(phoneNumber)
-    let bindingDoc = null
-
-    try {
-      const bindingRes = await bindingRef.get()
-      bindingDoc = bindingRes.data || null
-    } catch (error) {
-      bindingDoc = null
-    }
-
-    if (bindingDoc && bindingDoc.openid && bindingDoc.openid !== openid) {
-      const conflict = new Error('PHONE_ALREADY_BOUND')
-      conflict.code = 'PHONE_ALREADY_BOUND'
-      throw conflict
-    }
-
-    await bindingRef.set({
-      data: {
-        _id: phoneNumber,
-        phoneNumber,
-        openid,
-        userId: currentUser._id,
-        updatedAt: db.serverDate(),
-        createdAt: bindingDoc ? (bindingDoc.createdAt || db.serverDate()) : db.serverDate(),
-      },
-    })
-
-    await transaction.collection('users').doc(currentUser._id).update({
-      data: {
-        phoneNumber,
-        hasBoundPhone: true,
-        updatedAt: db.serverDate(),
-      },
-    })
-  })
-
-  const fresh = await db.collection('users').doc(currentUser._id).get()
-  return { success: true, userInfo: fresh.data }
-}
-
 exports.main = async (event = {}) => {
   const { method } = event
   const { OPENID } = cloud.getWXContext()
 
   try {
     if (method === 'wechat') return await ensureWechatUser(OPENID)
-    if (method === 'bindPhoneByWechat') return await bindPhoneByWechat(OPENID, event.code)
     return { success: false, message: 'UNSUPPORTED_LOGIN_METHOD' }
   } catch (err) {
     console.error('[login cloud] failed', method, err)

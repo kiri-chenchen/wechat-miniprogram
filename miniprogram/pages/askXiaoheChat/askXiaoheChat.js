@@ -1,6 +1,7 @@
 const { yuxiaoheBotId } = require("../../config/agent")
 const { resolveActivityCover, resolveActivityGallery } = require("../../utils/mediaAssets")
 const { buildActivityCoverTags } = require("../../utils/activityCoverTags")
+const { createBuddyApplicationFromMatch } = require("../../utils/messageStore")
 const {
   buildConversationTitle,
   createConversationId,
@@ -22,12 +23,24 @@ const SKILL_CONFIG = {
     placeholder: "告诉小禾这次想怎么安排行程",
     intro: "把这次行程的想法告诉小禾，小禾会像聊天一样一步步帮你梳理出发日期、天数、人数、关系、路线、预算和出行方式。"
   },
+  buddy_matching: {
+    badgeName: "找搭子",
+    placeholder: "告诉小禾你想找什么样的搭子",
+    intro: "告诉小禾你想去哪、什么时候出发、希望和什么样的人同行，小禾会先帮你筛出更合适的同行候选，再由你决定要不要发起申请。"
+  },
   xiaohe_feedback: {
     badgeName: "小禾树洞",
     placeholder: "说说你的想法",
     intro: "无论是活动、商品、住宿还是体验建议，都可以直接告诉小禾，小禾会认真记下来。"
   }
 }
+
+const DEFAULT_BUDDY_TAGS = ["周末出发", "自由行", "轻社交"]
+
+const GENERIC_BUDDY_STATUS_TAGS = ["偏好接近"]
+const GENERIC_BUDDY_TAGS = ["还在建立中"]
+const GENERIC_BUDDY_HIGHLIGHT_KEYWORDS = ["共同偏好", "资料完整度", "还在建立中"]
+const GENERIC_BUDDY_PRACTICAL_VALUES = ["轻同行搭子", "同区域"]
 
 function normalizeText(value) {
   return String(value || "").trim()
@@ -43,8 +56,101 @@ function normalizeTextLower(value) {
   return normalizeText(value).toLowerCase()
 }
 
+function ensureBuddySession() {
+  const app = getApp()
+  if (app.hasActiveSession && app.hasActiveSession()) {
+    return true
+  }
+
+  wx.showToast({
+    title: "请先登录后再找搭子",
+    icon: "none"
+  })
+
+  setTimeout(() => {
+    wx.navigateTo({
+      url: "/pages/login/login"
+    })
+  }, 250)
+
+  return false
+}
+
 function uniqueList(list = []) {
   return Array.from(new Set((list || []).filter(Boolean)))
+}
+
+function filterBuddyStatusTag(tag = "") {
+  const text = normalizeText(tag)
+  return GENERIC_BUDDY_STATUS_TAGS.includes(text) ? "" : text
+}
+
+function filterBuddyTags(tags = []) {
+  return uniqueList(normalizeArray(tags).filter((tag) => !GENERIC_BUDDY_TAGS.includes(tag)))
+}
+
+function filterBuddyHighlights(items = []) {
+  return normalizeArray(items).filter(
+    (item) => !GENERIC_BUDDY_HIGHLIGHT_KEYWORDS.some((keyword) => item.includes(keyword))
+  )
+}
+
+function filterBuddyPracticalInfo(list = []) {
+  return (Array.isArray(list) ? list : []).filter((item) => {
+    const value = normalizeText(item && item.value)
+    return value && !GENERIC_BUDDY_PRACTICAL_VALUES.includes(value)
+  })
+}
+
+function buildBuddyDisplaySummary(item = {}) {
+  const tags = filterBuddyTags(item.tags)
+  if (tags.length) {
+    return `真实标签：${tags.slice(0, 3).join("、")}`
+  }
+
+  const practicalInfo = filterBuddyPracticalInfo(item.practicalInfo)
+  const locationInfo = practicalInfo.find((entry) => normalizeText(entry && entry.label).includes("地区"))
+  if (locationInfo && locationInfo.value) {
+    return `真实资料：来自${locationInfo.value}`
+  }
+
+  return "以下展示的是该用户已填写的公开资料，以及系统基于资料生成的匹配结果。"
+}
+
+function buildBuddySystemReason(item = {}) {
+  const parts = []
+  const statusTag = filterBuddyStatusTag(item.statusTag)
+  const tags = filterBuddyTags(item.tags)
+
+  if (statusTag) {
+    parts.push(statusTag)
+  }
+
+  if (tags.length) {
+    parts.push(`标签重合 ${Math.min(tags.length, 3)} 项`)
+  }
+
+  if (item.matchScore) {
+    parts.push(`匹配度 ${item.matchScore}%`)
+  }
+
+  return `系统匹配说明：${parts.join(" + ") || "已根据地区、已填写标签和资料完整度完成匹配"}`
+}
+
+function normalizeBuddyRecommendation(item = {}) {
+  const tags = filterBuddyTags(item.tags)
+  const practicalInfo = filterBuddyPracticalInfo(item.practicalInfo)
+
+  return {
+    ...item,
+    statusTag: filterBuddyStatusTag(item.statusTag),
+    summary: buildBuddyDisplaySummary({ ...item, tags, practicalInfo }),
+    matchReason: buildBuddySystemReason({ ...item, tags }),
+    reasonTitle: "系统匹配说明",
+    tags,
+    playItems: filterBuddyHighlights(item.playItems),
+    practicalInfo,
+  }
 }
 
 function trimRegionSuffix(value = "") {
@@ -79,6 +185,10 @@ function buildSkillContext(skillMode = "") {
 function buildSkillOpeningQuestion(skillMode = "") {
   if (skillMode === "guide_customization") {
     return "用户刚进入了“攻略定制”技能。请你先热情问候，再用自然聊天的语气引导用户逐步补充行程信息。不要一上来就长篇推荐，也不要像表单一样连续盘问。你要优先收集并梳理这些关键信息：出发日期和天数、人数、人物关系、出发地、目的地、途径地、出行方式、预算。如果用户暂时不确定某一项，你要主动给出合理默认并继续推进。等信息足够后，再结合季节、天气、温度、旺季淡季和平台内容给出建议。第一轮只问当前最必要的一个问题。"
+  }
+
+  if (skillMode === "buddy_matching") {
+    return "用户刚进入了“找搭子”技能。请你先用自然聊天的语气确认这次想找什么类型的同行搭子，再一步步补充目的地、出发时间、出发地、人数偏好和同行边界。不要把这段对话做成表单。第一轮只问最必要的一个问题。"
   }
 
   if (skillMode === "xiaohe_feedback") {
@@ -282,6 +392,13 @@ function getProductPracticalInfo(item = {}) {
   ]
 }
 
+function buildBuddyPromptSummary(question = "", userInfo = {}) {
+  const dnaTags = normalizeArray(userInfo.dnaTags).slice(0, 3)
+  const profileText = dnaTags.length ? `，也会参考你的偏好标签“${dnaTags.join("、")}”` : ""
+  const questionText = normalizeText(question) || "你当前的同行需求"
+  return `小禾根据“${questionText}”${profileText}，先帮你筛到这几位更值得进一步联系的搭子候选。`
+}
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -352,6 +469,11 @@ Page({
     this.persistConversation(nextConversationId, messages, initialQuestion)
 
     if (source === "skill_entry") {
+      if (skillMode === "buddy_matching") {
+        this.requestBuddyMatches("我想找一个合适的搭子")
+        return
+      }
+
       const openingQuestion = buildSkillOpeningQuestion(skillMode)
       this.requestGenericAnswer(openingQuestion, {
         contextPayload: {
@@ -474,6 +596,11 @@ Page({
     this.syncCurrentConversation()
 
     if (this.data.source === "skill_entry") {
+      if (this.data.skillMode === "buddy_matching") {
+        this.requestBuddyMatches(value)
+        return
+      }
+
       this.requestGenericAnswer(value, {
         contextPayload: {
           mode: "skill",
@@ -884,8 +1011,99 @@ Page({
     }
   },
 
+  async requestBuddyMatches(question) {
+    if (!ensureBuddySession()) {
+      return
+    }
+
+    const app = getApp()
+    let userInfo = {}
+    try {
+      userInfo = (app && typeof app.getUserInfo === "function" && app.getUserInfo()) || {}
+    } catch (error) {
+      userInfo = {}
+    }
+
+    try {
+      const result = await wx.cloud.callFunction({
+        name: "userManage",
+        data: {
+          action: "getBuddyMatches",
+          payload: {
+            question: normalizeText(question) || DEFAULT_BUDDY_TAGS.join(" "),
+            limit: 3
+          }
+        }
+      })
+
+      const recommendations = Array.isArray(result?.result?.list)
+        ? result.result.list.map((item) => ({
+            ...normalizeBuddyRecommendation(item),
+            type: "buddy",
+            title: item.userName,
+          }))
+        : []
+
+      if (!recommendations.length) {
+        this.appendAiMessage("小禾暂时还没有筛到合适的真实搭子候选。等更多用户完成资料和 DNA 标签后，这里会更准确。", {
+          channelLabel: "找搭子"
+        })
+        return
+      }
+
+      this.appendAiMessage(buildBuddyPromptSummary(question, userInfo), {
+        recommendations,
+        tips: [
+          "小禾提醒你",
+          "1. 先确认出发时间和集合区域，再决定要不要继续聊。",
+          "2. 目前展示的是基于真实资料算出的候选，只展示必要字段。"
+        ].join("\n"),
+        channelLabel: "找搭子"
+      })
+    } catch (error) {
+      console.error("[askXiaoheChat] get buddy matches failed", error)
+      this.appendAiMessage("小禾这会儿还没拿到可用的搭子候选，你可以稍后再试。", {
+        channelLabel: "找搭子"
+      })
+    }
+  },
+
+  applyBuddyMatch(e) {
+    const dataset = (e && e.currentTarget && e.currentTarget.dataset) || {}
+    const userName = normalizeText(dataset.username)
+    const openingText = normalizeText(dataset.opening)
+    if (!userName || !openingText) {
+      wx.showToast({ title: "这位搭子的信息还没准备好", icon: "none" })
+      return
+    }
+
+    const application = createBuddyApplicationFromMatch({
+      userName,
+      openingText,
+      avatarUrl: dataset.avatarurl,
+      avatarText: dataset.avatartext,
+      avatarColor: dataset.avatarcolor,
+      matchScore: dataset.matchscore,
+      matchReason: dataset.matchreason,
+      direction: "outgoing"
+    })
+
+    if (!application || !application.id) {
+      wx.showToast({ title: "发起申请失败", icon: "none" })
+      return
+    }
+
+    wx.showToast({ title: "已发起申请", icon: "success" })
+    setTimeout(() => {
+      wx.navigateTo({
+        url: `/pages/messageBuddyApplyChat/messageBuddyApplyChat?id=${application.id}`
+      })
+    }, 220)
+  },
+
   openCardDetail(e) {
     const { type, sourceid: sourceId } = e.currentTarget.dataset || {}
+    if (type === "buddy") return
     if (!sourceId) return
 
     const urlMap = {

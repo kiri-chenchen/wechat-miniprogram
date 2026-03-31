@@ -23,11 +23,15 @@ Page({
 
   refreshPage() {
     const detail = getFormalConversation(this.data.id)
+    const conversation = detail.conversation || {}
     this.setData({
       messages: (detail.messages || []).map((item) => ({
         ...item,
         timeText: formatConversationTime(item.updatedAt),
       })),
+    })
+    wx.setNavigationBarTitle({
+      title: conversation.title || '会话',
     })
   },
 

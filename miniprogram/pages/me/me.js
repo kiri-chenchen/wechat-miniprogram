@@ -1,62 +1,63 @@
 const app = getApp()
+const { resolveMediaSource } = require('../../utils/mediaAssets')
 
 const DEFAULT_LOGGED_IN_AVATAR = '/images/avatar.png'
 const GUEST_AVATAR = '/images/me/guest-avatar.png'
 
 const TEXT = {
-  defaultNickname: 'e\u4f4d\u65c5\u5ba2',
-  guestHint: '\u767b\u5f55\u5f00\u542f\u6211\u7684\u4e13\u5c5e\u519c\u65c5\u4f53\u9a8c',
-  authLogin: '\u6388\u6743\u767b\u5f55',
-  editProfile: '\u4fee\u6539\u4e2a\u4eba\u8d44\u6599',
-  myDNA: '\u519c\u65c5DNA',
-  dnaPlaceholder: '\u70b9\u51fb\u67e5\u770b\u548c\u8c03\u6574\u4f60\u7684\u4e13\u5c5e\u6807\u7b7e',
-  dnaPlaceholderGuest: '\u767b\u5f55\u5b9a\u5236\u6211\u7684\u4e13\u5c5e\u6807\u7b7e',
-  myOrders: '\u6211\u7684\u8ba2\u5355',
-  allOrders: '\u5168\u90e8',
-  favorites: '\u6536\u85cf\u6d4f\u89c8',
-  history: '\u6d4f\u89c8\u5386\u53f2',
-  customerService: '\u5728\u7ebf\u5ba2\u670d',
-  systemSettings: '\u7cfb\u7edf\u8bbe\u7f6e',
-  clearLoginState: '\u6e05\u9664\u672c\u5730\u767b\u5f55\u6001',
-  clearLocalTestData: '\u6e05\u9664\u672c\u5730\u6d4b\u8bd5\u6570\u636e',
-  systemSettingsCancel: '\u53d6\u6d88',
-  logout: '\u9000\u51fa\u767b\u5f55',
-  historyDeveloping: '\u6d4f\u89c8\u5386\u53f2\u5f00\u53d1\u4e2d',
-  customerServiceDeveloping: '\u5728\u7ebf\u5ba2\u670d\u5f00\u53d1\u4e2d',
-  systemSettingsDeveloping: '\u7cfb\u7edf\u8bbe\u7f6e\u5f00\u53d1\u4e2d',
-  clearDone: '\u5df2\u6e05\u7406',
-  logoutSuccess: '\u5df2\u9000\u51fa\u767b\u5f55',
+  defaultNickname: 'e位旅客',
+  guestHint: '登录开启我的专属农旅体验',
+  authLogin: '授权登录',
+  editProfile: '修改个人资料',
+  myDNA: '农旅DNA',
+  dnaPlaceholder: '点击查看和调整你的专属标签',
+  dnaPlaceholderGuest: '登录定制我的专属标签',
+  myOrders: '我的订单',
+  allOrders: '全部',
+  favorites: '收藏浏览',
+  history: '浏览历史',
+  customerService: '在线客服',
+  systemSettings: '系统设置',
+  clearLoginState: '清除本地登录态',
+  clearLocalTestData: '清除本地测试数据',
+  systemSettingsCancel: '取消',
+  logout: '退出登录',
+  historyDeveloping: '浏览历史开发中',
+  customerServiceDeveloping: '在线客服开发中',
+  systemSettingsDeveloping: '系统设置开发中',
+  clearDone: '已清理',
+  logoutSuccess: '已退出登录',
 }
 
 const ORDER_ENTRIES = [
   {
     key: 'pending_payment',
     tab: 'pending_payment',
-    label: '\u5f85\u652f\u4ed8',
+    label: '待支付',
     icon: '/images/me/order-status/pending-payment.png',
   },
   {
     key: 'pending_trip',
     tab: 'pending_trip',
-    label: '\u5f85\u51fa\u884c',
+    label: '待出行',
     icon: '/images/me/order-status/pending-trip.png',
   },
   {
     key: 'pending_receive',
     tab: 'pending_receive',
-    label: '\u5f85\u6536\u8d27',
+    label: '待收货',
     icon: '/images/me/order-status/pending-receive.png',
   },
   {
     key: 'review',
     tab: 'pending',
-    label: '\u8bc4\u4ef7',
+    label: '评价',
     icon: '/images/me/order-status/review.png',
   },
   {
     key: 'refund_after_sale',
     tab: 'refund_after_sale',
-    label: '\u9000\u6b3e/\u552e\u540e',
+    label: '退款/售后',
     icon: '/images/me/order-status/refund-after-sale.png',
   },
 ]
@@ -96,18 +97,20 @@ Page({
     }
   },
 
-  refreshUser() {
+  async refreshUser() {
     const rawUserInfo = app.getUserInfo() || {}
     const loggedIn = !!rawUserInfo.openid
-    const avatarUrl = loggedIn
-      ? (rawUserInfo.avatarUrl || DEFAULT_LOGGED_IN_AVATAR)
-      : GUEST_AVATAR
-    const nickName = loggedIn
-      ? (rawUserInfo.nickName || TEXT.defaultNickname)
-      : ''
-    const dnaTags = loggedIn && Array.isArray(rawUserInfo.dnaTags)
-      ? rawUserInfo.dnaTags
-      : []
+    let avatarUrl = GUEST_AVATAR
+
+    if (loggedIn) {
+      const previewAvatar = rawUserInfo.avatarPreviewUrl || ''
+      const cachedResolvedAvatar = rawUserInfo.avatarResolvedUrl || ''
+      const resolvedAvatar = await resolveMediaSource(rawUserInfo.avatarUrl, cachedResolvedAvatar || DEFAULT_LOGGED_IN_AVATAR)
+      avatarUrl = previewAvatar || resolvedAvatar || cachedResolvedAvatar || DEFAULT_LOGGED_IN_AVATAR
+    }
+
+    const nickName = loggedIn ? (rawUserInfo.nickName || TEXT.defaultNickname) : ''
+    const dnaTags = loggedIn && Array.isArray(rawUserInfo.dnaTags) ? rawUserInfo.dnaTags : []
 
     this.setData({
       loggedIn,
@@ -118,6 +121,26 @@ Page({
       dnaTags,
       dnaPlaceholderText: loggedIn ? TEXT.dnaPlaceholder : TEXT.dnaPlaceholderGuest,
     })
+
+    if (loggedIn && rawUserInfo.avatarPreviewUrl) {
+      const resolvedAvatar = await resolveMediaSource(rawUserInfo.avatarUrl, '')
+      if (resolvedAvatar) {
+        const nextUserInfo = {
+          ...rawUserInfo,
+          avatarPreviewUrl: '',
+          avatarResolvedUrl: resolvedAvatar,
+        }
+        app.setUserInfo(nextUserInfo)
+        this.setData({
+          'userInfo.avatarUrl': resolvedAvatar,
+        })
+      }
+    } else if (loggedIn && rawUserInfo.avatarUrl && avatarUrl && avatarUrl !== rawUserInfo.avatarResolvedUrl && avatarUrl !== DEFAULT_LOGGED_IN_AVATAR) {
+      app.setUserInfo({
+        ...rawUserInfo,
+        avatarResolvedUrl: avatarUrl,
+      })
+    }
   },
 
   onAvatarError() {

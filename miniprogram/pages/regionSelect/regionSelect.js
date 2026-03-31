@@ -203,7 +203,7 @@ Page({
 
   onLoad() {
     const app = getApp()
-    if (!(app.hasActiveSession && app.hasActiveSession({ requireBoundPhone: true }))) {
+    if (!(app.hasActiveSession && app.hasActiveSession())) {
       wx.redirectTo({ url: '/pages/login/login' })
       return
     }
@@ -691,7 +691,7 @@ Page({
 
   async saveRegion(payload) {
     const app = getApp()
-    if (!(app.hasActiveSession && app.hasActiveSession({ requireBoundPhone: true }))) {
+    if (!(app.hasActiveSession && app.hasActiveSession())) {
       wx.redirectTo({ url: '/pages/login/login' })
       return null
     }

@@ -1,0 +1,77 @@
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24rpx;
+  background: linear-gradient(180deg, #f6faf4 0%, #edf5ea 100%);
+}
+
+.hero {
+  padding: 28rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 16rpx 30rpx rgba(87, 152, 74, 0.08);
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2a1f;
+}
+
+.desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #72836f;
+}
+
+.section {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+}
+
+.sectionTitle {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2a1f;
+}
+
+.optionList {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.optionChip {
+  padding: 16rpx 22rpx;
+  border-radius: 999rpx;
+  background: #edf5ea;
+  border: 2rpx solid transparent;
+  color: #4f614d;
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+.optionChip.active {
+  background: rgba(87, 152, 74, 0.12);
+  border-color: #57984a;
+  color: #2f5f3a;
+  font-weight: 600;
+}
+
+.saveBtn {
+  margin-top: 28rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
+  background: #57984a;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 18rpx 32rpx rgba(87, 152, 74, 0.18);
+}

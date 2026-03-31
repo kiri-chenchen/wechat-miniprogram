@@ -100,6 +100,12 @@ const ASK_SKILLS = [
     icon: "/images/ask-skills/guide.png"
   },
   {
+    id: "buddy",
+    mode: "buddy_matching",
+    title: "\u627e\u642d\u5b50",
+    icon: "/images/ask-skills/route.png"
+  },
+  {
     id: "treehole",
     mode: "xiaohe_feedback",
     title: "\u5c0f\u79be\u6811\u6d1e",

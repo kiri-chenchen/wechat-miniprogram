@@ -58,20 +58,16 @@ App({
   },
 
   getPostLoginTarget(userInfo) {
-    if (!userInfo.hasBoundPhone) {
-      return '/pages/login/login'
-    }
-
     if (userInfo.onboardingCompleted) {
       return '/pages/home/home'
     }
 
-    if (!userInfo.locationChoiceMade) {
-      return '/pages/permissionSettings/permissionSettings?mode=onboarding'
-    }
-
     if (!userInfo.profileCompleted) {
       return '/pages/registerProfile/registerProfile?mode=register'
+    }
+
+    if (!userInfo.locationChoiceMade) {
+      return '/pages/permissionSettings/permissionSettings?mode=onboarding'
     }
 
     if (!userInfo.dnaCompleted) {
@@ -87,8 +83,22 @@ App({
       return
     }
 
-    this.globalData.userInfo = userInfo
-    wx.setStorageSync(USER_INFO_KEY, userInfo)
+    const currentUserInfo = this.globalData.userInfo || wx.getStorageSync(USER_INFO_KEY) || {}
+    const mergedUserInfo = {
+      ...currentUserInfo,
+      ...userInfo,
+    }
+
+    if (!userInfo.avatarPreviewUrl && currentUserInfo.avatarPreviewUrl && currentUserInfo.avatarUrl === mergedUserInfo.avatarUrl) {
+      mergedUserInfo.avatarPreviewUrl = currentUserInfo.avatarPreviewUrl
+    }
+
+    if (!userInfo.avatarResolvedUrl && currentUserInfo.avatarResolvedUrl && currentUserInfo.avatarUrl === mergedUserInfo.avatarUrl) {
+      mergedUserInfo.avatarResolvedUrl = currentUserInfo.avatarResolvedUrl
+    }
+
+    this.globalData.userInfo = mergedUserInfo
+    wx.setStorageSync(USER_INFO_KEY, mergedUserInfo)
     wx.removeStorageSync(LOGOUT_FLAG_KEY)
   },
 
@@ -117,13 +127,8 @@ App({
   },
 
   hasActiveSession(options = {}) {
-    const { requireBoundPhone = false } = options
     const userInfo = this.getUserInfo()
     if (!userInfo) {
-      return false
-    }
-
-    if (requireBoundPhone && !userInfo.hasBoundPhone) {
       return false
     }
 

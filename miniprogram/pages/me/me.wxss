@@ -38,6 +38,12 @@
   line-height: 1.6;
 }
 
+.buddyIntentSummary {
+  font-size: 24rpx;
+  color: #426046;
+  line-height: 1.7;
+}
+
 .tag {
   background: #edf5ea;
   border: 1rpx solid #57984a;

@@ -4,6 +4,7 @@ const {
   buildStoryList,
   formatConversationTime,
 } = require('../../utils/messageStore')
+const { resolveMediaSource } = require('../../utils/mediaAssets')
 
 const DEFAULT_AVATAR = '/images/avatar.png'
 
@@ -29,28 +30,34 @@ Page({
     }
   },
 
-  refreshPage() {
+  async refreshPage() {
     const userInfo = app.getUserInfo ? (app.getUserInfo() || {}) : {}
-    const userAvatar = userInfo.avatarUrl || DEFAULT_AVATAR
-    this.setData({
-      userAvatar,
-      storyList: [
-        {
-          id: 'self-note-entry',
-          kind: 'self-note',
-          title: '发布笔记',
-          avatarUrl: userAvatar,
-          unreadText: '',
-        },
-      ].concat(buildStoryList().map((item) => ({
+    const userAvatar = await resolveMediaSource(
+      userInfo.avatarPreviewUrl || userInfo.avatarResolvedUrl || userInfo.avatarUrl || '',
+      DEFAULT_AVATAR
+    )
+
+    const storyList = await Promise.all(
+      buildStoryList().map(async (item) => ({
         ...item,
+        avatarUrl: await resolveMediaSource(item.avatarUrl || '', ''),
         unreadText: item.unread > 99 ? '99+' : (item.unread > 0 ? String(item.unread) : ''),
-      }))),
-      homeRows: buildHomeRows().map((item) => ({
+      }))
+    )
+
+    const homeRows = await Promise.all(
+      buildHomeRows().map(async (item) => ({
         ...item,
+        avatarUrl: await resolveMediaSource(item.avatarUrl || '', ''),
         timeText: formatConversationTime(item.updatedAt),
         unreadText: item.unread > 99 ? '99+' : (item.unread > 0 ? String(item.unread) : ''),
-      })),
+      }))
+    )
+
+    this.setData({
+      userAvatar,
+      storyList,
+      homeRows,
     })
   },
 
@@ -64,34 +71,16 @@ Page({
       wx.navigateTo({ url: `/pages/messageConversation/messageConversation?id=${id}` })
       return
     }
-    if (entryType === 'interactive') {
-      wx.navigateTo({ url: '/pages/messageInteraction/messageInteraction' })
-      return
-    }
-    if (entryType === 'merchant') {
-      wx.navigateTo({ url: '/pages/messageMerchant/messageMerchant' })
-      return
-    }
-    if (entryType === 'platform') {
-      wx.navigateTo({ url: '/pages/messagePlatform/messagePlatform' })
-      return
-    }
     if (entryType === 'buddy') {
       wx.navigateTo({ url: '/pages/messageBuddyApply/messageBuddyApply' })
     }
   },
 
   openStory(e) {
-    const { kind, noteId } = e.currentTarget.dataset
-    if (kind === 'self-note') {
-      wx.navigateTo({ url: '/pages/notePublish/notePublish' })
-      return
-    }
+    const { noteId } = e.currentTarget.dataset
     if (noteId) {
       wx.navigateTo({ url: `/pages/noteDetail/noteDetail?id=${noteId}` })
-      return
     }
-    this.openRow({ currentTarget: { dataset: e.currentTarget.dataset } })
   },
 
   onMenuTap() {
@@ -104,17 +93,13 @@ Page({
 
   onAddTap() {
     wx.showActionSheet({
-      itemList: ['去问小禾', '查看搭子申请', '打开平台消息'],
+      itemList: ['去问小禾', '查看搭子申请'],
       success: (res) => {
         if (res.tapIndex === 0) {
           wx.navigateTo({ url: '/pages/askXiaoheChat/askXiaoheChat' })
           return
         }
-        if (res.tapIndex === 1) {
-          wx.navigateTo({ url: '/pages/messageBuddyApply/messageBuddyApply' })
-          return
-        }
-        wx.navigateTo({ url: '/pages/messagePlatform/messagePlatform' })
+        wx.navigateTo({ url: '/pages/messageBuddyApply/messageBuddyApply' })
       },
     })
   },

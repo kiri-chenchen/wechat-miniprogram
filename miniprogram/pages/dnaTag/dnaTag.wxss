@@ -5,35 +5,9 @@
   background: linear-gradient(180deg, #fbf3e4 0%, #eef6ea 100%);
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20rpx;
-  padding: 40rpx 32rpx 24rpx;
-}
-
-.title {
-  font-size: 38rpx;
-  font-weight: 700;
-  color: #263928;
-}
-
-.desc {
-  margin-top: 14rpx;
-  color: #6a7a69;
-  font-size: 26rpx;
-  line-height: 1.7;
-}
-
-.skip {
-  color: #57984a;
-  font-size: 26rpx;
-}
-
 .content {
   flex: 1;
-  padding: 0 32rpx 24rpx;
+  padding: 32rpx 32rpx 24rpx;
   box-sizing: border-box;
 }
 
@@ -64,12 +38,15 @@
   color: #556653;
   font-size: 26rpx;
   border: 1rpx solid #dfe8d9;
+  font-weight: 500;
 }
 
 .tag.active {
-  background: #57984a;
-  color: #ffffff;
-  border-color: #57984a;
+  background: #f5faf1;
+  color: #3f653c;
+  border-color: #7aa56b;
+  border-width: 2rpx;
+  font-weight: 700;
 }
 
 .footer {

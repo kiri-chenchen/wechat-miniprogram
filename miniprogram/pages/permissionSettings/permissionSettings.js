@@ -56,7 +56,7 @@ Page({
   },
 
   onLoad(options) {
-    if (!(app.hasActiveSession && app.hasActiveSession({ requireBoundPhone: true }))) {
+    if (!(app.hasActiveSession && app.hasActiveSession())) {
       wx.redirectTo({ url: '/pages/login/login' })
       return
     }
@@ -123,7 +123,7 @@ Page({
   },
 
   async saveChoice(locationAuthorized, location) {
-    if (!(app.hasActiveSession && app.hasActiveSession({ requireBoundPhone: true }))) {
+    if (!(app.hasActiveSession && app.hasActiveSession())) {
       wx.redirectTo({ url: '/pages/login/login' })
       return
     }
@@ -158,7 +158,7 @@ Page({
     }
 
     wx.redirectTo({
-      url: '/pages/registerProfile/registerProfile?mode=register',
+      url: '/pages/dnaTag/dnaTag?mode=setup',
     })
   },
 })
