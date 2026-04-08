@@ -8,7 +8,7 @@ Page({
     groups: [],
     loading: false,
     empty: true,
-    summaryText: '￥0',
+    summaryText: '\u5f85\u5b9a',
     selectedCount: 0,
   },
 
@@ -28,7 +28,7 @@ Page({
 
       if (!res.result || !res.result.success) {
         wx.showToast({
-          title: formatCommerceMessage(res.result && res.result.message, '购物车加载失败'),
+          title: formatCommerceMessage(res.result && res.result.message, '\u8d2d\u7269\u8f66\u52a0\u8f7d\u5931\u8d25'),
           icon: 'none',
         })
         return
@@ -43,7 +43,7 @@ Page({
     } catch (error) {
       console.error('[cart] load failed', error)
       wx.showToast({
-        title: '购物车加载失败',
+        title: '\u8d2d\u7269\u8f66\u52a0\u8f7d\u5931\u8d25',
         icon: 'none',
       })
     } finally {
@@ -54,16 +54,21 @@ Page({
   decorateGroups(groups = []) {
     return groups.map((group) => ({
       ...group,
-      items: (group.items || []).map((item) => ({
-        ...item,
-        subtotalFen: Number((item.productSnapshot && item.productSnapshot.price) || 0) * Number(item.quantity || 0),
-        subtotalText: formatFenToYuan(Number((item.productSnapshot && item.productSnapshot.price) || 0) * Number(item.quantity || 0), {
-          fallback: '￥0',
-        }),
-        unitPriceText: formatFenToYuan((item.productSnapshot && item.productSnapshot.price) || 0, {
-          fallback: '￥0',
-        }),
-      })),
+      items: (group.items || []).map((item) => {
+        const unitPrice = Number((item.productSnapshot && item.productSnapshot.price) || 0)
+        const quantity = Number(item.quantity || 0)
+        const subtotalFen = unitPrice * quantity
+        return {
+          ...item,
+          subtotalFen,
+          subtotalText: formatFenToYuan(subtotalFen, {
+            fallback: '\u5f85\u5b9a',
+          }),
+          unitPriceText: formatFenToYuan(unitPrice, {
+            fallback: '\u5f85\u5b9a',
+          }),
+        }
+      }),
     }))
   },
 
@@ -81,7 +86,7 @@ Page({
     })
 
     this.setData({
-      summaryText: formatFenToYuan(totalFen, { fallback: '￥0' }),
+      summaryText: formatFenToYuan(totalFen, { fallback: '\u5f85\u5b9a' }),
       selectedCount,
     })
   },
@@ -112,8 +117,8 @@ Page({
   async removeItem(e) {
     const id = e.currentTarget.dataset.id
     wx.showModal({
-      title: '删除商品',
-      content: '确认将这个商品移出购物车吗？',
+      title: '\u5220\u9664\u5546\u54c1',
+      content: '\u786e\u8ba4\u5c06\u8fd9\u4e2a\u5546\u54c1\u79fb\u51fa\u8d2d\u7269\u8f66\u5417\uff1f',
       success: async (res) => {
         if (!res.confirm) return
         await this.runCartAction('remove', {
@@ -124,7 +129,7 @@ Page({
   },
 
   async runCartAction(action, payload) {
-    wx.showLoading({ title: '处理中' })
+    wx.showLoading({ title: '\u5904\u7406\u4e2d' })
     try {
       const res = await wx.cloud.callFunction({
         name: 'productCart',
@@ -136,7 +141,7 @@ Page({
 
       if (!res.result || !res.result.success) {
         wx.showToast({
-          title: formatCommerceMessage(res.result && res.result.message, '操作失败'),
+          title: formatCommerceMessage(res.result && res.result.message, '\u64cd\u4f5c\u5931\u8d25'),
           icon: 'none',
         })
         return
@@ -146,7 +151,7 @@ Page({
     } catch (error) {
       console.error('[cart] action failed', action, error)
       wx.showToast({
-        title: '操作失败',
+        title: '\u64cd\u4f5c\u5931\u8d25',
         icon: 'none',
       })
     } finally {
@@ -164,7 +169,7 @@ Page({
 
     if (!selectedGroups.length) {
       wx.showToast({
-        title: '请先选择商品',
+        title: '\u8bf7\u5148\u9009\u62e9\u5546\u54c1',
         icon: 'none',
       })
       return
@@ -172,14 +177,19 @@ Page({
 
     if (selectedGroups.length > 1) {
       wx.showToast({
-        title: '暂不支持跨商家合并结算',
+        title: '\u6682\u4e0d\u652f\u6301\u8de8\u5546\u5bb6\u5408\u5e76\u7ed3\u7b97',
         icon: 'none',
       })
       return
     }
 
+    const cartItemIds = selectedGroups[0].selectedItems
+      .map((item) => item._id)
+      .filter(Boolean)
+      .join(',')
+
     wx.navigateTo({
-      url: '/pages/confirmOrder/confirmOrder?source=cart',
+      url: `/pages/confirmOrder/confirmOrder?source=cart&cartItemIds=${encodeURIComponent(cartItemIds)}`,
     })
   },
 

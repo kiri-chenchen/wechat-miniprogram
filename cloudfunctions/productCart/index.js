@@ -4,8 +4,17 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const DEFAULT_PLATFORM_MERCHANT_OPENID = 'platform-self-operated'
-const DEFAULT_PLATFORM_MERCHANT_NAME = '平台自营'
+const DEFAULT_PLATFORM_MERCHANT_NAME = '\u5e73\u53f0\u81ea\u8425'
 const DEFAULT_PRODUCT_STOCK = 100
+const COLLECTION_NAMES = {
+  cart: ['cartItems', 'productCartItems', 'productCart'],
+}
+const COLLECTION_MISSING_KEYWORDS = [
+  'collection not exists',
+  'DATABASE_COLLECTION_NOT_EXIST',
+  'Db or Table not exist',
+]
+const resolvedCollections = {}
 
 function normalizeText(value = '') {
   return String(value || '').trim()
@@ -16,27 +25,88 @@ function normalizeInt(value, fallback = 0) {
   return Number.isFinite(num) ? Math.round(num) : fallback
 }
 
-function isLegacyYuanAmount(value) {
-  const num = Number(value)
-  return Number.isFinite(num) && num > 0 && num < 1000
+function normalizeAmountUnit(value = '') {
+  const normalized = normalizeText(value).toLowerCase()
+  if (!normalized) return ''
+  if (normalized === '\u5143' || normalized === 'yuan' || normalized === 'cny_yuan') {
+    return 'yuan'
+  }
+  if (normalized === '\u5206' || normalized === 'fen' || normalized === 'cny_fen') {
+    return 'fen'
+  }
+  return normalized
 }
 
-function normalizeAmountToFen(value) {
+function shouldTreatAsYuan(value, unit = '') {
+  const normalizedUnit = normalizeAmountUnit(unit)
+  if (normalizedUnit === 'yuan') {
+    return true
+  }
+  if (normalizedUnit === 'fen') {
+    return false
+  }
+  return normalizeText(value).includes('.')
+}
+
+function normalizeAmountToFen(value, unit = '') {
   const num = Number(value)
   if (!Number.isFinite(num) || num <= 0) {
     return 0
   }
 
-  if (!Number.isInteger(num) || isLegacyYuanAmount(num)) {
+  if (shouldTreatAsYuan(value, unit)) {
     return Math.round(num * 100)
   }
 
   return Math.round(num)
 }
 
+function resolveAmountUnit(raw = {}, field) {
+  return normalizeAmountUnit(
+    raw[`${field}Unit`] ||
+    raw.amountUnit ||
+    raw.currencyUnit,
+  )
+}
+
+function isCollectionMissingError(error) {
+  const message = String((error && error.message) || error || '')
+  return COLLECTION_MISSING_KEYWORDS.some((keyword) => message.includes(keyword))
+}
+
+async function resolveCollectionName(key) {
+  if (resolvedCollections[key]) {
+    return resolvedCollections[key]
+  }
+
+  const candidates = COLLECTION_NAMES[key] || []
+  if (!candidates.length) {
+    throw new Error(`UNKNOWN_COLLECTION_KEY:${key}`)
+  }
+
+  for (const name of candidates) {
+    try {
+      await db.collection(name).limit(1).get()
+      resolvedCollections[key] = name
+      return name
+    } catch (error) {
+      if (!isCollectionMissingError(error)) {
+        throw error
+      }
+    }
+  }
+
+  resolvedCollections[key] = candidates[0]
+  return resolvedCollections[key]
+}
+
+function getOwnerOpenid(record = {}) {
+  return normalizeText(record.ownerOpenid || record.openid || record._openid)
+}
+
 function normalizeProduct(raw = {}) {
-  const price = normalizeAmountToFen(raw.price)
-  const shippingFee = normalizeAmountToFen(raw.shippingFee)
+  const price = normalizeAmountToFen(raw.price, resolveAmountUnit(raw, 'price'))
+  const shippingFee = normalizeAmountToFen(raw.shippingFee, resolveAmountUnit(raw, 'shippingFee'))
   const soldCount = Math.max(0, normalizeInt(raw.soldCount, normalizeInt(raw.sold, 0)))
   const lockedStock = Math.max(0, normalizeInt(raw.lockedStock, 0))
   const rawStock = normalizeInt(raw.stock, NaN)
@@ -54,7 +124,9 @@ function normalizeProduct(raw = {}) {
   return {
     ...raw,
     price,
+    priceUnit: 'fen',
     shippingFee,
+    shippingFeeUnit: 'fen',
     soldCount,
     lockedStock,
     stock,
@@ -74,11 +146,17 @@ function buildProductPatch(raw = {}) {
   const normalized = normalizeProduct(raw)
   const patch = {}
 
-  if (normalizeAmountToFen(raw.price) !== Number(raw.price)) {
+  if (normalized.price !== Number(raw.price)) {
     patch.price = normalized.price
   }
-  if (normalizeAmountToFen(raw.shippingFee) !== Number(raw.shippingFee || 0)) {
+  if (normalizeAmountUnit(raw.priceUnit) !== 'fen') {
+    patch.priceUnit = 'fen'
+  }
+  if (normalized.shippingFee !== Number(raw.shippingFee || 0)) {
     patch.shippingFee = normalized.shippingFee
+  }
+  if (normalizeAmountUnit(raw.shippingFeeUnit) !== 'fen') {
+    patch.shippingFeeUnit = 'fen'
   }
   if (normalizeText(raw.merchantOpenid) !== normalized.merchantOpenid) {
     patch.merchantOpenid = normalized.merchantOpenid
@@ -150,9 +228,14 @@ async function getProductDoc(productId) {
 
 function presentCartItem(item = {}) {
   const snapshot = item.productSnapshot || {}
-  const isPurchasable = snapshot.status === 'on_sale' && normalizeInt(snapshot.stock, 0) > 0 && normalizeInt(snapshot.price, 0) > 0
+  const isPurchasable =
+    normalizeText(snapshot.status) === 'on_sale' &&
+    normalizeInt(snapshot.stock, 0) > 0 &&
+    normalizeInt(snapshot.price, 0) > 0
+
   return {
     ...item,
+    selected: !!item.selected,
     isPurchasable,
     productSnapshot: {
       ...snapshot,
@@ -163,14 +246,86 @@ function presentCartItem(item = {}) {
   }
 }
 
+function buildCartProductSnapshot(product = {}) {
+  return {
+    title: normalizeText(product.title),
+    cover: normalizeText(product.cover),
+    price: product.price,
+    priceUnit: 'fen',
+    stock: product.stock,
+    status: product.status,
+  }
+}
+
 async function listCart(openid) {
   await ensureUser(openid)
-  const res = await db.collection('cartItems')
-    .where({ ownerOpenid: openid })
-    .orderBy('updatedAt', 'desc')
-    .get()
+  const cartCollectionName = await resolveCollectionName('cart')
 
-  const items = (res.data || []).map(presentCartItem)
+  let rows = []
+  try {
+    const res = await db.collection(cartCollectionName)
+      .where({ ownerOpenid: openid })
+      .orderBy('updatedAt', 'desc')
+      .get()
+    rows = res.data || []
+  } catch (error) {
+    if (!isCollectionMissingError(error)) {
+      throw error
+    }
+  }
+
+  const items = []
+  for (const rawItem of rows) {
+    let item = rawItem
+    const productId = normalizeText(rawItem.productId)
+    if (productId) {
+      try {
+        const product = await getProductDoc(productId)
+        const productSnapshot = buildCartProductSnapshot(product)
+        const needsRefresh =
+          normalizeText(rawItem.merchantOpenid) !== product.merchantOpenid ||
+          normalizeText(rawItem.merchantName) !== product.merchantName ||
+          normalizeText((rawItem.productSnapshot || {}).title) !== productSnapshot.title ||
+          normalizeText((rawItem.productSnapshot || {}).cover) !== productSnapshot.cover ||
+          normalizeInt((rawItem.productSnapshot || {}).price, 0) !== productSnapshot.price ||
+          normalizeInt((rawItem.productSnapshot || {}).stock, 0) !== productSnapshot.stock ||
+          normalizeText((rawItem.productSnapshot || {}).status) !== productSnapshot.status ||
+          getOwnerOpenid(rawItem) !== openid
+
+        item = {
+          ...rawItem,
+          ownerOpenid: openid,
+          openid,
+          _openid: openid,
+          merchantOpenid: product.merchantOpenid,
+          merchantName: product.merchantName,
+          productSnapshot,
+        }
+
+        if (needsRefresh) {
+          await db.collection(cartCollectionName).doc(rawItem._id).update({
+            data: {
+              ownerOpenid: openid,
+              openid,
+              _openid: openid,
+              merchantOpenid: product.merchantOpenid,
+              merchantName: product.merchantName,
+              productSnapshot,
+              updatedAt: db.serverDate(),
+            },
+          })
+        }
+      } catch (error) {
+        if (error && error.code === 'PRODUCT_NOT_FOUND') {
+          item = rawItem
+        } else {
+          throw error
+        }
+      }
+    }
+
+    items.push(presentCartItem(item))
+  }
   const groupsMap = new Map()
   let totalCount = 0
   let checkedCount = 0
@@ -204,6 +359,7 @@ async function listCart(openid) {
 
 async function addCartItem(event, openid) {
   await ensureUser(openid)
+  const cartCollectionName = await resolveCollectionName('cart')
   const productId = normalizeText(event.productId)
   const quantity = normalizeInt(event.quantity, 0)
   const selected = typeof event.selected === 'boolean' ? event.selected : true
@@ -225,31 +381,43 @@ async function addCartItem(event, openid) {
     throw Object.assign(new Error('PRODUCT_STOCK_INSUFFICIENT'), { code: 'PRODUCT_STOCK_INSUFFICIENT' })
   }
 
-  const existing = await db.collection('cartItems')
-    .where({
-      ownerOpenid: openid,
-      productId,
-    })
-    .limit(1)
-    .get()
+  let existingList = []
+  try {
+    const existing = await db.collection(cartCollectionName)
+      .where({
+        ownerOpenid: openid,
+        productId,
+      })
+      .limit(1)
+      .get()
+    existingList = existing.data || []
+  } catch (error) {
+    if (!isCollectionMissingError(error)) {
+      throw error
+    }
+  }
 
   const productSnapshot = {
     title: normalizeText(product.title),
     cover: normalizeText(product.cover),
     price: product.price,
+    priceUnit: 'fen',
     stock: product.stock,
     status: product.status,
   }
 
-  if (existing.data.length) {
-    const item = existing.data[0]
+  if (existingList.length) {
+    const item = existingList[0]
     const nextQuantity = normalizeInt(item.quantity, 0) + quantity
     if (product.stock < nextQuantity) {
       throw Object.assign(new Error('PRODUCT_STOCK_INSUFFICIENT'), { code: 'PRODUCT_STOCK_INSUFFICIENT' })
     }
 
-    await db.collection('cartItems').doc(item._id).update({
+    await db.collection(cartCollectionName).doc(item._id).update({
       data: {
+        ownerOpenid: openid,
+        openid,
+        _openid: openid,
         quantity: nextQuantity,
         selected,
         merchantOpenid: product.merchantOpenid,
@@ -259,7 +427,7 @@ async function addCartItem(event, openid) {
       },
     })
 
-    const fresh = await db.collection('cartItems').doc(item._id).get()
+    const fresh = await db.collection(cartCollectionName).doc(item._id).get()
     return {
       success: true,
       data: {
@@ -269,9 +437,11 @@ async function addCartItem(event, openid) {
     }
   }
 
-  const addRes = await db.collection('cartItems').add({
+  const addRes = await db.collection(cartCollectionName).add({
     data: {
       ownerOpenid: openid,
+      openid,
+      _openid: openid,
       merchantOpenid: product.merchantOpenid,
       merchantName: product.merchantName,
       productId,
@@ -283,7 +453,7 @@ async function addCartItem(event, openid) {
     },
   })
 
-  const fresh = await db.collection('cartItems').doc(addRes._id).get()
+  const fresh = await db.collection(cartCollectionName).doc(addRes._id).get()
   return {
     success: true,
     data: {
@@ -294,14 +464,24 @@ async function addCartItem(event, openid) {
 }
 
 async function getOwnedCartItem(id, openid) {
+  const cartCollectionName = await resolveCollectionName('cart')
   const itemId = normalizeText(id)
   if (!itemId) {
     throw Object.assign(new Error('CART_ITEM_NOT_FOUND'), { code: 'CART_ITEM_NOT_FOUND' })
   }
 
-  const res = await db.collection('cartItems').doc(itemId).get()
-  const item = res.data || null
-  if (!item || normalizeText(item.ownerOpenid) !== openid) {
+  let item = null
+  try {
+    const res = await db.collection(cartCollectionName).doc(itemId).get()
+    item = res.data || null
+  } catch (error) {
+    if (isCollectionMissingError(error)) {
+      throw Object.assign(new Error('CART_COLLECTION_MISSING'), { code: 'CART_COLLECTION_MISSING' })
+    }
+    throw error
+  }
+
+  if (!item || getOwnerOpenid(item) !== openid) {
     throw Object.assign(new Error('CART_ITEM_NOT_FOUND'), { code: 'CART_ITEM_NOT_FOUND' })
   }
 
@@ -310,6 +490,7 @@ async function getOwnedCartItem(id, openid) {
 
 async function updateQty(event, openid) {
   await ensureUser(openid)
+  const cartCollectionName = await resolveCollectionName('cart')
   const item = await getOwnedCartItem(event.cartItemId, openid)
   const quantity = normalizeInt(event.quantity, 0)
   if (quantity <= 0) {
@@ -321,7 +502,7 @@ async function updateQty(event, openid) {
     throw Object.assign(new Error('PRODUCT_STOCK_INSUFFICIENT'), { code: 'PRODUCT_STOCK_INSUFFICIENT' })
   }
 
-  await db.collection('cartItems').doc(item._id).update({
+  await db.collection(cartCollectionName).doc(item._id).update({
     data: {
       quantity,
       merchantOpenid: product.merchantOpenid,
@@ -330,6 +511,7 @@ async function updateQty(event, openid) {
         title: normalizeText(product.title),
         cover: normalizeText(product.cover),
         price: product.price,
+        priceUnit: 'fen',
         stock: product.stock,
         status: product.status,
       },
@@ -337,7 +519,7 @@ async function updateQty(event, openid) {
     },
   })
 
-  const fresh = await db.collection('cartItems').doc(item._id).get()
+  const fresh = await db.collection(cartCollectionName).doc(item._id).get()
   return {
     success: true,
     data: {
@@ -348,14 +530,15 @@ async function updateQty(event, openid) {
 
 async function toggleSelect(event, openid) {
   await ensureUser(openid)
+  const cartCollectionName = await resolveCollectionName('cart')
   const item = await getOwnedCartItem(event.cartItemId, openid)
-  await db.collection('cartItems').doc(item._id).update({
+  await db.collection(cartCollectionName).doc(item._id).update({
     data: {
       selected: !!event.selected,
       updatedAt: db.serverDate(),
     },
   })
-  const fresh = await db.collection('cartItems').doc(item._id).get()
+  const fresh = await db.collection(cartCollectionName).doc(item._id).get()
   return {
     success: true,
     data: {
@@ -366,8 +549,9 @@ async function toggleSelect(event, openid) {
 
 async function removeItem(event, openid) {
   await ensureUser(openid)
+  const cartCollectionName = await resolveCollectionName('cart')
   const item = await getOwnedCartItem(event.cartItemId, openid)
-  await db.collection('cartItems').doc(item._id).remove()
+  await db.collection(cartCollectionName).doc(item._id).remove()
   return {
     success: true,
     data: {
@@ -378,16 +562,25 @@ async function removeItem(event, openid) {
 
 async function clearChecked(openid) {
   await ensureUser(openid)
-  const checked = await db.collection('cartItems')
-    .where({
-      ownerOpenid: openid,
-      selected: true,
-    })
-    .get()
+  const cartCollectionName = await resolveCollectionName('cart')
 
-  const list = checked.data || []
+  let list = []
+  try {
+    const checked = await db.collection(cartCollectionName)
+      .where({
+        ownerOpenid: openid,
+        selected: true,
+      })
+      .get()
+    list = checked.data || []
+  } catch (error) {
+    if (!isCollectionMissingError(error)) {
+      throw error
+    }
+  }
+
   for (const item of list) {
-    await db.collection('cartItems').doc(item._id).remove()
+    await db.collection(cartCollectionName).doc(item._id).remove()
   }
 
   return {
@@ -418,8 +611,9 @@ exports.main = async (event = {}) => {
     console.error('[productCart] failed', action, error)
     return {
       success: false,
-      message: error.code || error.message || 'PRODUCT_CART_FAILED',
+      message: isCollectionMissingError(error)
+        ? 'CART_COLLECTION_MISSING'
+        : (error.code || error.message || 'PRODUCT_CART_FAILED'),
     }
   }
 }
-

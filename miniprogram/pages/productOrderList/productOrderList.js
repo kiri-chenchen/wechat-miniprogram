@@ -4,23 +4,33 @@ const {
 } = require('../../utils/commerce')
 
 const TAB_CONFIG = [
-  { key: 'all', label: '全部' },
-  { key: 'pending_payment', label: '待支付' },
-  { key: 'paid', label: '待发货' },
-  { key: 'shipped', label: '待收货' },
-  { key: 'completed', label: '已完成' },
-  { key: 'cancelled', label: '已取消' },
-  { key: 'closed', label: '已关闭' },
+  { key: 'all', label: '\u5168\u90e8' },
+  { key: 'pending_payment', label: '\u5f85\u652f\u4ed8' },
+  { key: 'paid', label: '\u5f85\u53d1\u8d27' },
+  { key: 'shipped', label: '\u5f85\u6536\u8d27' },
+  { key: 'completed', label: '\u5df2\u5b8c\u6210' },
+  { key: 'cancelled', label: '\u5df2\u53d6\u6d88' },
+  { key: 'closed', label: '\u5df2\u5173\u95ed' },
 ]
 
+const TAB_ALIAS_MAP = {
+  pending_receive: 'shipped',
+  pending_delivery: 'paid',
+}
+
 const EMPTY_COPY = {
-  all: { title: '暂无商品订单', desc: '下单后的商品订单会显示在这里。' },
-  pending_payment: { title: '暂无待支付订单', desc: '还没有未支付的商品订单。' },
-  paid: { title: '暂无待发货订单', desc: '已支付待发货的订单会显示在这里。' },
-  shipped: { title: '暂无待收货订单', desc: '已发货待收货的订单会显示在这里。' },
-  completed: { title: '暂无已完成订单', desc: '已确认收货的订单会显示在这里。' },
-  cancelled: { title: '暂无已取消订单', desc: '你取消的订单会显示在这里。' },
-  closed: { title: '暂无已关闭订单', desc: '超时未支付关闭的订单会显示在这里。' },
+  all: { title: '\u6682\u65e0\u5546\u54c1\u8ba2\u5355', desc: '\u4e0b\u5355\u540e\u7684\u5546\u54c1\u8ba2\u5355\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002' },
+  pending_payment: { title: '\u6682\u65e0\u5f85\u652f\u4ed8\u8ba2\u5355', desc: '\u8fd8\u6ca1\u6709\u672a\u652f\u4ed8\u7684\u5546\u54c1\u8ba2\u5355\u3002' },
+  paid: { title: '\u6682\u65e0\u5f85\u53d1\u8d27\u8ba2\u5355', desc: '\u5df2\u652f\u4ed8\u5f85\u53d1\u8d27\u7684\u8ba2\u5355\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002' },
+  shipped: { title: '\u6682\u65e0\u5f85\u6536\u8d27\u8ba2\u5355', desc: '\u5df2\u53d1\u8d27\u5f85\u6536\u8d27\u7684\u8ba2\u5355\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002' },
+  completed: { title: '\u6682\u65e0\u5df2\u5b8c\u6210\u8ba2\u5355', desc: '\u5df2\u786e\u8ba4\u6536\u8d27\u7684\u8ba2\u5355\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002' },
+  cancelled: { title: '\u6682\u65e0\u5df2\u53d6\u6d88\u8ba2\u5355', desc: '\u4f60\u53d6\u6d88\u7684\u8ba2\u5355\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002' },
+  closed: { title: '\u6682\u65e0\u5df2\u5173\u95ed\u8ba2\u5355', desc: '\u8d85\u65f6\u672a\u652f\u4ed8\u5173\u95ed\u7684\u8ba2\u5355\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002' },
+}
+
+function normalizeTabKey(rawTab = 'all') {
+  const tab = TAB_ALIAS_MAP[rawTab] || rawTab
+  return TAB_CONFIG.some((item) => item.key === tab) ? tab : 'all'
 }
 
 function formatDateTime(input) {
@@ -36,12 +46,12 @@ function mapOrder(item = {}) {
   return {
     ...item,
     statusClass: item.displayStatusKey || '',
-    orderTypeText: '商品订单',
-    title: firstItem.title || item.merchantName || '未命名商品',
+    orderTypeText: '\u5546\u54c1\u8ba2\u5355',
+    title: firstItem.title || item.merchantName || '\u672a\u547d\u540d\u5546\u54c1',
     cover: firstItem.cover || '/images/default-goods-image.png',
-    summary: `${(item.items || []).length}件商品 - ${item.merchantName || '平台自营'}`,
+    summary: `${(item.items || []).length}\u4ef6\u5546\u54c1 · ${item.merchantName || '\u5e73\u53f0\u81ea\u8425'}`,
     createdAtText: formatDateTime(item.createdAt),
-    payAmountText: formatFenToYuan(item.payAmount, { fallback: '￥0' }),
+    payAmountText: formatFenToYuan(item.payAmount, { fallback: '\u5f85\u5b9a' }),
   }
 }
 
@@ -55,9 +65,8 @@ Page({
   },
 
   onLoad(options) {
-    const rawTab = options.tab || 'all'
     this.setData({
-      currentTab: TAB_CONFIG.some((item) => item.key === rawTab) ? rawTab : 'all',
+      currentTab: normalizeTabKey(options.tab || 'all'),
     })
   },
 
@@ -68,12 +77,12 @@ Page({
   switchTab(e) {
     const { tab } = e.currentTarget.dataset
     if (!tab) return
-    this.setData({ currentTab: tab }, () => this.loadOrders())
+    this.setData({ currentTab: normalizeTabKey(tab) }, () => this.loadOrders())
   },
 
   async loadOrders() {
     const status = this.data.currentTab === 'all' ? '' : this.data.currentTab
-    wx.showLoading({ title: '加载中' })
+    wx.showLoading({ title: '\u52a0\u8f7d\u4e2d' })
     try {
       const res = await wx.cloud.callFunction({
         name: 'productOrder',
@@ -87,7 +96,7 @@ Page({
 
       if (!res.result || !res.result.success) {
         wx.showToast({
-          title: formatCommerceMessage(res.result && res.result.message, '??????'),
+          title: formatCommerceMessage(res.result && res.result.message, '\u8ba2\u5355\u52a0\u8f7d\u5931\u8d25'),
           icon: 'none',
         })
         return
@@ -103,7 +112,7 @@ Page({
     } catch (error) {
       console.error('[productOrderList] load failed', error)
       wx.showToast({
-        title: '订单加载失败',
+        title: '\u8ba2\u5355\u52a0\u8f7d\u5931\u8d25',
         icon: 'none',
       })
     } finally {

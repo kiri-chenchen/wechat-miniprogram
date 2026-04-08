@@ -4,11 +4,19 @@ const {
   runProductOrderPayment,
 } = require('../../utils/commerce')
 
+function parseCartItemIds(raw = '') {
+  return decodeURIComponent(String(raw || ''))
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 Page({
   data: {
     source: 'buy_now',
     productId: '',
     quantity: 1,
+    cartItemIds: [],
     preview: null,
     address: null,
     remark: '',
@@ -20,6 +28,7 @@ Page({
       source: options.source || 'buy_now',
       productId: options.productId || '',
       quantity: Number(options.quantity || 1),
+      cartItemIds: parseCartItemIds(options.cartItemIds || ''),
     })
   },
 
@@ -27,15 +36,15 @@ Page({
     this.loadPreview()
   },
 
-  async loadPreview() {
-    const data = {
-      action: 'preview',
+  buildOrderPayload(action) {
+    const payload = {
+      action,
       source: this.data.source,
       addressId: this.data.address && this.data.address._id,
     }
 
     if (this.data.source === 'buy_now') {
-      data.items = [
+      payload.items = [
         {
           productId: this.data.productId,
           quantity: this.data.quantity,
@@ -43,16 +52,24 @@ Page({
       ]
     }
 
-    wx.showLoading({ title: '加载中' })
+    if (this.data.source === 'cart' && this.data.cartItemIds.length) {
+      payload.cartItemIds = this.data.cartItemIds
+    }
+
+    return payload
+  },
+
+  async loadPreview() {
+    wx.showLoading({ title: '\u52a0\u8f7d\u4e2d' })
     try {
       const res = await wx.cloud.callFunction({
         name: 'productOrder',
-        data,
+        data: this.buildOrderPayload('preview'),
       })
 
       if (!res.result || !res.result.success) {
         wx.showToast({
-          title: formatCommerceMessage(res.result && res.result.message, '??????'),
+          title: formatCommerceMessage(res.result && res.result.message, '\u8ba2\u5355\u9884\u89c8\u5931\u8d25'),
           icon: 'none',
         })
         return
@@ -66,7 +83,7 @@ Page({
     } catch (error) {
       console.error('[confirmOrder] preview failed', error)
       wx.showToast({
-        title: '订单预览失败',
+        title: '\u8ba2\u5355\u9884\u89c8\u5931\u8d25',
         icon: 'none',
       })
     } finally {
@@ -77,13 +94,13 @@ Page({
   decoratePreview(preview = {}) {
     return {
       ...preview,
-      goodsAmountText: formatFenToYuan(preview.goodsAmount, { fallback: '￥0' }),
-      shippingFeeText: preview.shippingFee > 0 ? formatFenToYuan(preview.shippingFee, { fallback: '￥0' }) : '包邮',
-      payAmountText: formatFenToYuan(preview.payAmount, { fallback: '￥0' }),
+      goodsAmountText: formatFenToYuan(preview.goodsAmount, { fallback: '\u5f85\u5b9a' }),
+      shippingFeeText: preview.shippingFee > 0 ? formatFenToYuan(preview.shippingFee, { fallback: '\u5f85\u5b9a' }) : '\u5305\u90ae',
+      payAmountText: formatFenToYuan(preview.payAmount, { fallback: '\u5f85\u5b9a' }),
       items: (preview.items || []).map((item) => ({
         ...item,
-        unitPriceText: formatFenToYuan(item.unitPrice, { fallback: '￥0' }),
-        subtotalText: formatFenToYuan(item.subtotal, { fallback: '￥0' }),
+        unitPriceText: formatFenToYuan(item.unitPrice, { fallback: '\u5f85\u5b9a' }),
+        subtotalText: formatFenToYuan(item.subtotal, { fallback: '\u5f85\u5b9a' }),
       })),
     }
   },
@@ -109,30 +126,20 @@ Page({
     if (this.data.submitting) return
     if (!this.data.address || !this.data.address._id) {
       wx.showToast({
-        title: '请先选择收货地址',
+        title: '\u8bf7\u5148\u9009\u62e9\u6536\u8d27\u5730\u5740',
         icon: 'none',
       })
       return
     }
 
     const payload = {
-      action: 'create',
-      source: this.data.source,
+      ...this.buildOrderPayload('create'),
       addressId: this.data.address._id,
       remark: this.data.remark.trim(),
     }
 
-    if (this.data.source === 'buy_now') {
-      payload.items = [
-        {
-          productId: this.data.productId,
-          quantity: this.data.quantity,
-        },
-      ]
-    }
-
     this.setData({ submitting: true })
-    wx.showLoading({ title: '提交中' })
+    wx.showLoading({ title: '\u63d0\u4ea4\u4e2d' })
     try {
       const createRes = await wx.cloud.callFunction({
         name: 'productOrder',
@@ -141,7 +148,7 @@ Page({
 
       if (!createRes.result || !createRes.result.success) {
         wx.showToast({
-          title: formatCommerceMessage(createRes.result && createRes.result.message, '????'),
+          title: formatCommerceMessage(createRes.result && createRes.result.message, '\u4e0b\u5355\u5931\u8d25'),
           icon: 'none',
         })
         return
@@ -151,7 +158,7 @@ Page({
       const orderId = order && order._id
       if (!orderId) {
         wx.showToast({
-          title: '下单失败',
+          title: '\u4e0b\u5355\u5931\u8d25',
           icon: 'none',
         })
         return
@@ -160,7 +167,7 @@ Page({
       const payResult = await runProductOrderPayment(orderId)
       if (!payResult.success) {
         wx.showToast({
-          title: formatCommerceMessage(payResult.message, '??????'),
+          title: formatCommerceMessage(payResult.message, '\u652f\u4ed8\u5931\u8d25'),
           icon: 'none',
         })
       }
@@ -171,7 +178,7 @@ Page({
     } catch (error) {
       console.error('[confirmOrder] create failed', error)
       wx.showToast({
-        title: '下单失败',
+        title: '\u4e0b\u5355\u5931\u8d25',
         icon: 'none',
       })
     } finally {

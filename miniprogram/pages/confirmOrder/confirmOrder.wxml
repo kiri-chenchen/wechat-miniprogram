@@ -24,7 +24,12 @@
 
   <view class="sectionCard">
     <view class="sectionTitle">买家备注</view>
-    <textarea class="remarkInput" value="{{remark}}" bindinput="onRemarkInput" placeholder="选填，可告诉商家你的补充需求" />
+    <textarea
+      class="remarkInput"
+      value="{{remark}}"
+      bindinput="onRemarkInput"
+      placeholder="选填，可告诉商家你的补充需求"
+    />
   </view>
 
   <view class="sectionCard amountCard">

@@ -1,0 +1,51 @@
+[
+  {
+    "_id": "f0df711e69b6af1300454b107e91ed18",
+    "seedKey": "lanzhou-fresh-baihe-giftbox",
+    "title": "兰州鲜百合礼盒",
+    "merchantName": "百合谷",
+    "status": "on_sale"
+  },
+  {
+    "_id": "6a0a1fb669b6af1300477c2b79ae05d8",
+    "seedKey": "songpan-songbei-premium",
+    "title": "松潘松贝（精选，按克售卖）",
+    "merchantName": "松潘川贝优选店",
+    "status": "on_sale"
+  },
+  {
+    "_id": "71fe4ab869b6af1300464a746d112516",
+    "seedKey": "wild-cordyceps-tiered",
+    "title": "精选纯野生藏草（150元/克起）",
+    "merchantName": "藏地优选滋补馆",
+    "status": "on_sale"
+  },
+  {
+    "_id": "93abbbd769b6af140046afbe01e27d96",
+    "seedKey": "kushui-rose-seedling",
+    "title": "苦水玫瑰树苗（一把）",
+    "merchantName": "永登玫乡优选店",
+    "status": "on_sale"
+  },
+  {
+    "_id": "c3459b2a69b6af130045287a3ca63741",
+    "seedKey": "kushui-rose-80g",
+    "title": "苦水玫瑰花蕾罐装 80g",
+    "merchantName": "永登玫乡优选店",
+    "status": "on_sale"
+  },
+  {
+    "_id": "3bef321d69b6af140044d5f94c6512fc",
+    "seedKey": "hongxin-hotel-twin-room",
+    "title": "鸿鑫宾馆双床房 1晚",
+    "merchantName": "鸿鑫宾馆",
+    "status": "on_sale"
+  },
+  {
+    "_id": "2d12bec269bc992600ddc522767ba186",
+    "seedKey": "huangshan-native-eggs-50",
+    "title": "黄山土鸡蛋 50枚装",
+    "merchantName": "黄山山林散养农场",
+    "status": "on_sale"
+  }
+]

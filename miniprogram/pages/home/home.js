@@ -20,7 +20,7 @@ const DEFAULT_SEARCH_HINTS = [
 const NAV_ITEMS = [
   {
     key: 'fun',
-    title: '乡野趣玩',
+    title: '乡野乐事',
     icon: '/images/nav-fun.svg',
     action: 'goRuralFun',
   },
@@ -32,7 +32,7 @@ const NAV_ITEMS = [
   },
   {
     key: 'mall',
-    title: '乡村好物',
+    title: '乡味商城',
     icon: '/images/nav-mall.png',
     action: 'goMall',
   },

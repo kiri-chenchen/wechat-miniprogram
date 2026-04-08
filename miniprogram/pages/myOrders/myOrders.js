@@ -1,8 +1,8 @@
 const TAB_MAP = {
-  all: '/pages/myActivities/myActivities?tab=all',
-  pending_payment: '/pages/myActivities/myActivities?tab=pending_payment',
+  all: '/pages/productOrderList/productOrderList?tab=all',
+  pending_payment: '/pages/productOrderList/productOrderList?tab=pending_payment',
   pending_trip: '/pages/myActivities/myActivities?tab=upcoming',
-  pending_receive: '/pages/myActivities/myActivities?tab=all',
+  pending_receive: '/pages/productOrderList/productOrderList?tab=shipped',
   refund_after_sale: '/pages/myActivities/myActivities?tab=after_sale',
 }
 
@@ -12,11 +12,12 @@ Page({
   },
 
   onLoad(options) {
-    this.redirectToLegacyPage(options || {})
+    this.redirectToTargetPage(options || {})
   },
 
-  redirectToLegacyPage(options = {}) {
+  redirectToTargetPage(options = {}) {
     if (this.data.redirecting) return
+
     const tab = options.tab || 'all'
     const url = TAB_MAP[tab] || TAB_MAP.all
     this.setData({ redirecting: true })
@@ -26,7 +27,7 @@ Page({
       fail: () => {
         this.setData({ redirecting: false })
         wx.showToast({
-          title: '打开订单页失败',
+          title: '\u6253\u5f00\u8ba2\u5355\u9875\u5931\u8d25',
           icon: 'none',
         })
       },

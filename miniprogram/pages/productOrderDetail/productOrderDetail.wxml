@@ -50,6 +50,7 @@
     <button class="actionBtn ghost" bindtap="goOrderList">查看商品订单</button>
     <button wx:if="{{detail.actions.canCancel}}" class="actionBtn ghost" bindtap="cancelOrder">取消订单</button>
     <button wx:if="{{detail.actions.canPay}}" class="actionBtn primary" bindtap="payOrder">立即支付</button>
+    <button wx:if="{{detail.actions.canShip}}" class="actionBtn primary" bindtap="shipOrder">模拟发货</button>
     <button wx:if="{{detail.actions.canConfirmReceive}}" class="actionBtn primary" bindtap="confirmReceive">确认收货</button>
   </view>
 </view>

@@ -5,17 +5,27 @@ const db = cloud.database()
 const _ = db.command
 
 const DEFAULT_PLATFORM_MERCHANT_OPENID = 'platform-self-operated'
-const DEFAULT_PLATFORM_MERCHANT_NAME = '平台自营'
+const DEFAULT_PLATFORM_MERCHANT_NAME = '\u5e73\u53f0\u81ea\u8425'
 const DEFAULT_PRODUCT_STOCK = 100
 const PAYMENT_EXPIRE_MS = 30 * 60 * 1000
+const COLLECTION_NAMES = {
+  cart: ['cartItems', 'productCartItems', 'productCart'],
+  order: ['productOrders', 'productOrder'],
+}
+const COLLECTION_MISSING_KEYWORDS = [
+  'collection not exists',
+  'DATABASE_COLLECTION_NOT_EXIST',
+  'Db or Table not exist',
+]
+const resolvedCollections = {}
 
 const STATUS_TEXT = {
-  pending_payment: '待支付',
-  paid: '待发货',
-  shipped: '待收货',
-  completed: '已完成',
-  cancelled: '已取消',
-  closed: '已关闭',
+  pending_payment: '\u5f85\u652f\u4ed8',
+  paid: '\u5f85\u53d1\u8d27',
+  shipped: '\u5f85\u6536\u8d27',
+  completed: '\u5df2\u5b8c\u6210',
+  cancelled: '\u5df2\u53d6\u6d88',
+  closed: '\u5df2\u5173\u95ed',
 }
 
 function normalizeText(value = '') {
@@ -27,27 +37,88 @@ function normalizeInt(value, fallback = 0) {
   return Number.isFinite(num) ? Math.round(num) : fallback
 }
 
-function isLegacyYuanAmount(value) {
-  const num = Number(value)
-  return Number.isFinite(num) && num > 0 && num < 1000
+function normalizeAmountUnit(value = '') {
+  const normalized = normalizeText(value).toLowerCase()
+  if (!normalized) return ''
+  if (normalized === '\u5143' || normalized === 'yuan' || normalized === 'cny_yuan') {
+    return 'yuan'
+  }
+  if (normalized === '\u5206' || normalized === 'fen' || normalized === 'cny_fen') {
+    return 'fen'
+  }
+  return normalized
 }
 
-function normalizeAmountToFen(value) {
+function shouldTreatAsYuan(value, unit = '') {
+  const normalizedUnit = normalizeAmountUnit(unit)
+  if (normalizedUnit === 'yuan') {
+    return true
+  }
+  if (normalizedUnit === 'fen') {
+    return false
+  }
+  return normalizeText(value).includes('.')
+}
+
+function normalizeAmountToFen(value, unit = '') {
   const num = Number(value)
   if (!Number.isFinite(num) || num <= 0) {
     return 0
   }
 
-  if (!Number.isInteger(num) || isLegacyYuanAmount(num)) {
+  if (shouldTreatAsYuan(value, unit)) {
     return Math.round(num * 100)
   }
 
   return Math.round(num)
 }
 
+function resolveAmountUnit(raw = {}, field) {
+  return normalizeAmountUnit(
+    raw[`${field}Unit`] ||
+    raw.amountUnit ||
+    raw.currencyUnit,
+  )
+}
+
+function isCollectionMissingError(error) {
+  const message = String((error && error.message) || error || '')
+  return COLLECTION_MISSING_KEYWORDS.some((keyword) => message.includes(keyword))
+}
+
+async function resolveCollectionName(key) {
+  if (resolvedCollections[key]) {
+    return resolvedCollections[key]
+  }
+
+  const candidates = COLLECTION_NAMES[key] || []
+  if (!candidates.length) {
+    throw new Error(`UNKNOWN_COLLECTION_KEY:${key}`)
+  }
+
+  for (const name of candidates) {
+    try {
+      await db.collection(name).limit(1).get()
+      resolvedCollections[key] = name
+      return name
+    } catch (error) {
+      if (!isCollectionMissingError(error)) {
+        throw error
+      }
+    }
+  }
+
+  resolvedCollections[key] = candidates[0]
+  return resolvedCollections[key]
+}
+
+function getOwnerOpenid(record = {}) {
+  return normalizeText(record.ownerOpenid || record.openid || record._openid)
+}
+
 function normalizeProduct(raw = {}) {
-  const price = normalizeAmountToFen(raw.price)
-  const shippingFee = normalizeAmountToFen(raw.shippingFee)
+  const price = normalizeAmountToFen(raw.price, resolveAmountUnit(raw, 'price'))
+  const shippingFee = normalizeAmountToFen(raw.shippingFee, resolveAmountUnit(raw, 'shippingFee'))
   const soldCount = Math.max(0, normalizeInt(raw.soldCount, normalizeInt(raw.sold, 0)))
   const lockedStock = Math.max(0, normalizeInt(raw.lockedStock, 0))
   const rawStock = normalizeInt(raw.stock, NaN)
@@ -65,7 +136,9 @@ function normalizeProduct(raw = {}) {
   return {
     ...raw,
     price,
+    priceUnit: 'fen',
     shippingFee,
+    shippingFeeUnit: 'fen',
     soldCount,
     lockedStock,
     stock,
@@ -85,11 +158,17 @@ function buildProductPatch(raw = {}) {
   const normalized = normalizeProduct(raw)
   const patch = {}
 
-  if (normalizeAmountToFen(raw.price) !== Number(raw.price)) {
+  if (normalized.price !== Number(raw.price)) {
     patch.price = normalized.price
   }
-  if (normalizeAmountToFen(raw.shippingFee) !== Number(raw.shippingFee || 0)) {
+  if (normalizeAmountUnit(raw.priceUnit) !== 'fen') {
+    patch.priceUnit = 'fen'
+  }
+  if (normalized.shippingFee !== Number(raw.shippingFee || 0)) {
     patch.shippingFee = normalized.shippingFee
+  }
+  if (normalizeAmountUnit(raw.shippingFeeUnit) !== 'fen') {
+    patch.shippingFeeUnit = 'fen'
   }
   if (normalizeText(raw.merchantOpenid) !== normalized.merchantOpenid) {
     patch.merchantOpenid = normalized.merchantOpenid
@@ -138,7 +217,7 @@ async function getAddressByOwner(addressId, openid) {
   if (!id) return null
   const res = await db.collection('addresses').doc(id).get()
   const address = res.data || null
-  if (!address || normalizeText(address.ownerOpenid) !== openid) {
+  if (!address || getOwnerOpenid(address) !== openid) {
     throw Object.assign(new Error('ADDRESS_NOT_FOUND'), { code: 'ADDRESS_NOT_FOUND' })
   }
   return address
@@ -174,23 +253,32 @@ function buildAddressSnapshot(address = null) {
 }
 
 async function getCartItemsForOrder(openid, cartItemIds = []) {
-  if (cartItemIds.length) {
-    const res = await db.collection('cartItems')
+  const cartCollectionName = await resolveCollectionName('cart')
+
+  try {
+    if (cartItemIds.length) {
+      const res = await db.collection(cartCollectionName)
+        .where({
+          _id: _.in(cartItemIds),
+          ownerOpenid: openid,
+        })
+        .get()
+      return res.data || []
+    }
+
+    const res = await db.collection(cartCollectionName)
       .where({
-        _id: _.in(cartItemIds),
         ownerOpenid: openid,
+        selected: true,
       })
       .get()
     return res.data || []
+  } catch (error) {
+    if (isCollectionMissingError(error)) {
+      return []
+    }
+    throw error
   }
-
-  const res = await db.collection('cartItems')
-    .where({
-      ownerOpenid: openid,
-      selected: true,
-    })
-    .get()
-  return res.data || []
 }
 
 function buildPendingOrderNo() {
@@ -201,10 +289,15 @@ function buildMockTradeNo(orderNo) {
   return `MOCK_${orderNo}_${Date.now()}`
 }
 
+function buildMockTrackingNo(orderNo) {
+  return `MOCKSHIP_${orderNo}_${Date.now()}`
+}
+
 function buildOrderActions(statusKey) {
   return {
     canPay: statusKey === 'pending_payment',
     canCancel: statusKey === 'pending_payment',
+    canShip: statusKey === 'paid',
     canConfirmReceive: statusKey === 'shipped',
   }
 }
@@ -214,17 +307,31 @@ function presentOrder(order = {}) {
   return {
     ...order,
     displayStatusKey: statusKey,
-    displayStatusText: STATUS_TEXT[statusKey] || '未知状态',
+    displayStatusText: STATUS_TEXT[statusKey] || '\u672a\u77e5\u72b6\u6001',
     actions: buildOrderActions(statusKey),
   }
 }
 
-async function closeExpiredOrderById(orderId) {
+async function closeExpiredOrderById(orderId, options = {}) {
+  const { silentMissing = false } = options
+  const orderCollectionName = await resolveCollectionName('order')
   const id = normalizeText(orderId)
   if (!id) return null
 
-  const res = await db.collection('productOrders').doc(id).get()
-  const order = res.data || null
+  let order = null
+  try {
+    const res = await db.collection(orderCollectionName).doc(id).get()
+    order = res.data || null
+  } catch (error) {
+    if (isCollectionMissingError(error) && silentMissing) {
+      return null
+    }
+    if (isCollectionMissingError(error)) {
+      throw Object.assign(new Error('ORDER_COLLECTION_MISSING'), { code: 'ORDER_COLLECTION_MISSING' })
+    }
+    throw error
+  }
+
   if (!order) return null
   if (normalizeText(order.status) !== 'pending_payment') {
     return order
@@ -236,7 +343,7 @@ async function closeExpiredOrderById(orderId) {
   }
 
   await db.runTransaction(async (transaction) => {
-    const live = await transaction.collection('productOrders').doc(id).get()
+    const live = await transaction.collection(orderCollectionName).doc(id).get()
     const current = live.data || null
     if (!current || normalizeText(current.status) !== 'pending_payment') {
       return
@@ -262,7 +369,7 @@ async function closeExpiredOrderById(orderId) {
       })
     }
 
-    await transaction.collection('productOrders').doc(id).update({
+    await transaction.collection(orderCollectionName).doc(id).update({
       data: {
         status: 'closed',
         closedAt: db.serverDate(),
@@ -272,29 +379,39 @@ async function closeExpiredOrderById(orderId) {
     })
   })
 
-  const fresh = await db.collection('productOrders').doc(id).get()
+  const fresh = await db.collection(orderCollectionName).doc(id).get()
   return fresh.data
 }
 
 async function closeExpiredOrdersForUser(openid, specificId = '') {
+  const orderCollectionName = await resolveCollectionName('order')
   const ids = []
+
   if (specificId) {
-    const order = await closeExpiredOrderById(specificId)
+    const order = await closeExpiredOrderById(specificId, { silentMissing: true })
     if (order && normalizeText(order.status) === 'closed') {
       ids.push(order._id)
     }
     return { closedCount: ids.length, ids }
   }
 
-  const res = await db.collection('productOrders')
-    .where({
-      ownerOpenid: openid,
-      status: 'pending_payment',
-    })
-    .get()
+  let rows = []
+  try {
+    const res = await db.collection(orderCollectionName)
+      .where({
+        ownerOpenid: openid,
+        status: 'pending_payment',
+      })
+      .get()
+    rows = res.data || []
+  } catch (error) {
+    if (!isCollectionMissingError(error)) {
+      throw error
+    }
+  }
 
-  for (const item of (res.data || [])) {
-    const order = await closeExpiredOrderById(item._id)
+  for (const item of rows) {
+    const order = await closeExpiredOrderById(item._id, { silentMissing: true })
     if (order && normalizeText(order.status) === 'closed') {
       ids.push(order._id)
     }
@@ -310,7 +427,7 @@ async function getOwnedOrder(id, openid) {
   }
 
   const order = await closeExpiredOrderById(orderId)
-  if (!order || normalizeText(order.ownerOpenid) !== openid) {
+  if (!order || getOwnerOpenid(order) !== openid) {
     throw Object.assign(new Error('ORDER_NOT_FOUND'), { code: 'ORDER_NOT_FOUND' })
   }
   return order
@@ -423,6 +540,7 @@ async function preview(event, openid) {
       title: normalizeText(product.title),
       cover: normalizeText(product.cover),
       unitPrice: product.price,
+      priceUnit: 'fen',
       quantity: item.quantity,
       subtotal,
       stock: product.stock,
@@ -454,6 +572,9 @@ async function create(event, openid) {
   if (!address) {
     throw Object.assign(new Error('ADDRESS_NOT_FOUND'), { code: 'ADDRESS_NOT_FOUND' })
   }
+
+  const cartCollectionName = await resolveCollectionName('cart')
+  const orderCollectionName = await resolveCollectionName('order')
   const addressSnapshot = buildAddressSnapshot(address)
   const remark = normalizeText(event.remark)
   const orderNo = buildPendingOrderNo()
@@ -509,10 +630,12 @@ async function create(event, openid) {
       const subtotal = product.price * sourceItem.quantity
       goodsAmount += subtotal
       detailItems.push({
+        sourceCartItemId: sourceItem.cartItemId || '',
         productId: product._id,
         title: normalizeText(product.title),
         cover: normalizeText(product.cover),
         unitPrice: product.price,
+        priceUnit: 'fen',
         quantity: sourceItem.quantity,
         subtotal,
       })
@@ -526,15 +649,17 @@ async function create(event, openid) {
       })
 
       if (source === 'cart' && sourceItem.cartItemId) {
-        await transaction.collection('cartItems').doc(sourceItem.cartItemId).remove()
+        await transaction.collection(cartCollectionName).doc(sourceItem.cartItemId).remove()
       }
     }
 
     const payAmount = goodsAmount + shippingFee
-    const addRes = await transaction.collection('productOrders').add({
+    const addRes = await transaction.collection(orderCollectionName).add({
       data: {
         orderNo,
         ownerOpenid: openid,
+        openid,
+        _openid: openid,
         merchantOpenid,
         merchantName,
         source,
@@ -566,7 +691,7 @@ async function create(event, openid) {
     return addRes._id
   })
 
-  const fresh = await db.collection('productOrders').doc(result).get()
+  const fresh = await db.collection(orderCollectionName).doc(result).get()
   return {
     success: true,
     data: {
@@ -588,6 +713,7 @@ async function detail(event, openid) {
 
 async function listMine(event, openid) {
   await ensureUser(openid)
+  const orderCollectionName = await resolveCollectionName('order')
   await closeExpiredOrdersForUser(openid)
 
   const page = Math.max(1, normalizeInt(event.page, 1))
@@ -600,34 +726,48 @@ async function listMine(event, openid) {
     where.status = status
   }
 
-  const countRes = await db.collection('productOrders').where(where).count()
-  const res = await db.collection('productOrders')
-    .where(where)
-    .orderBy('createdAt', 'desc')
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .get()
+  try {
+    const countRes = await db.collection(orderCollectionName).where(where).count()
+    const res = await db.collection(orderCollectionName)
+      .where(where)
+      .orderBy('createdAt', 'desc')
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .get()
 
-  return {
-    success: true,
-    data: {
-      list: (res.data || []).map(presentOrder),
-      total: countRes.total || 0,
-    },
+    return {
+      success: true,
+      data: {
+        list: (res.data || []).map(presentOrder),
+        total: countRes.total || 0,
+      },
+    }
+  } catch (error) {
+    if (isCollectionMissingError(error)) {
+      return {
+        success: true,
+        data: {
+          list: [],
+          total: 0,
+        },
+      }
+    }
+    throw error
   }
 }
 
 async function cancel(event, openid) {
   await ensureUser(openid)
+  const orderCollectionName = await resolveCollectionName('order')
   const order = await getOwnedOrder(event.id, openid)
   if (normalizeText(order.status) !== 'pending_payment') {
     throw Object.assign(new Error('ORDER_CANNOT_CANCEL'), { code: 'ORDER_CANNOT_CANCEL' })
   }
 
   await db.runTransaction(async (transaction) => {
-    const live = await transaction.collection('productOrders').doc(order._id).get()
+    const live = await transaction.collection(orderCollectionName).doc(order._id).get()
     const current = live.data || null
-    if (!current || normalizeText(current.ownerOpenid) !== openid) {
+    if (!current || getOwnerOpenid(current) !== openid) {
       throw Object.assign(new Error('ORDER_NOT_FOUND'), { code: 'ORDER_NOT_FOUND' })
     }
     if (normalizeText(current.status) !== 'pending_payment') {
@@ -647,7 +787,7 @@ async function cancel(event, openid) {
       })
     }
 
-    await transaction.collection('productOrders').doc(order._id).update({
+    await transaction.collection(orderCollectionName).doc(order._id).update({
       data: {
         status: 'cancelled',
         cancelledAt: db.serverDate(),
@@ -657,7 +797,7 @@ async function cancel(event, openid) {
     })
   })
 
-  const fresh = await db.collection('productOrders').doc(order._id).get()
+  const fresh = await db.collection(orderCollectionName).doc(order._id).get()
   return {
     success: true,
     data: {
@@ -677,6 +817,7 @@ async function closeExpired(event, openid) {
 
 async function createPayment(event, openid) {
   await ensureUser(openid)
+  const orderCollectionName = await resolveCollectionName('order')
   const order = await getOwnedOrder(event.id, openid)
   if (normalizeText(order.status) !== 'pending_payment') {
     throw Object.assign(new Error('ORDER_CANNOT_PAY'), { code: 'ORDER_CANNOT_PAY' })
@@ -698,9 +839,9 @@ async function createPayment(event, openid) {
   }
 
   await db.runTransaction(async (transaction) => {
-    const live = await transaction.collection('productOrders').doc(order._id).get()
+    const live = await transaction.collection(orderCollectionName).doc(order._id).get()
     const current = live.data || null
-    if (!current || normalizeText(current.ownerOpenid) !== openid) {
+    if (!current || getOwnerOpenid(current) !== openid) {
       throw Object.assign(new Error('ORDER_NOT_FOUND'), { code: 'ORDER_NOT_FOUND' })
     }
     if (normalizeText(current.status) !== 'pending_payment') {
@@ -723,7 +864,7 @@ async function createPayment(event, openid) {
       })
     }
 
-    await transaction.collection('productOrders').doc(order._id).update({
+    await transaction.collection(orderCollectionName).doc(order._id).update({
       data: {
         status: 'paid',
         paymentMode: 'mock',
@@ -734,7 +875,7 @@ async function createPayment(event, openid) {
     })
   })
 
-  const fresh = await db.collection('productOrders').doc(order._id).get()
+  const fresh = await db.collection(orderCollectionName).doc(order._id).get()
   return {
     success: true,
     data: {
@@ -749,14 +890,47 @@ async function createPayment(event, openid) {
   }
 }
 
+async function ship(event, openid) {
+  await ensureUser(openid)
+  const orderCollectionName = await resolveCollectionName('order')
+  const order = await getOwnedOrder(event.id, openid)
+  if (normalizeText(order.status) !== 'paid') {
+    throw Object.assign(new Error('ORDER_CANNOT_SHIP'), { code: 'ORDER_CANNOT_SHIP' })
+  }
+
+  const deliveryCompany = normalizeText(event.deliveryCompany) || '\u6a21\u62df\u7269\u6d41'
+  const trackingNo = normalizeText(event.trackingNo) || buildMockTrackingNo(order.orderNo)
+
+  await db.collection(orderCollectionName).doc(order._id).update({
+    data: {
+      status: 'shipped',
+      shippedAt: db.serverDate(),
+      delivery: {
+        company: deliveryCompany,
+        trackingNo,
+      },
+      updatedAt: db.serverDate(),
+    },
+  })
+
+  const fresh = await db.collection(orderCollectionName).doc(order._id).get()
+  return {
+    success: true,
+    data: {
+      order: presentOrder(fresh.data),
+    },
+  }
+}
+
 async function confirmReceive(event, openid) {
   await ensureUser(openid)
+  const orderCollectionName = await resolveCollectionName('order')
   const order = await getOwnedOrder(event.id, openid)
   if (normalizeText(order.status) !== 'shipped') {
     throw Object.assign(new Error('ORDER_CANNOT_CONFIRM_RECEIVE'), { code: 'ORDER_CANNOT_CONFIRM_RECEIVE' })
   }
 
-  await db.collection('productOrders').doc(order._id).update({
+  await db.collection(orderCollectionName).doc(order._id).update({
     data: {
       status: 'completed',
       receivedAt: db.serverDate(),
@@ -764,7 +938,7 @@ async function confirmReceive(event, openid) {
     },
   })
 
-  const fresh = await db.collection('productOrders').doc(order._id).get()
+  const fresh = await db.collection(orderCollectionName).doc(order._id).get()
   return {
     success: true,
     data: {
@@ -785,6 +959,7 @@ exports.main = async (event = {}) => {
     if (action === 'cancel') return await cancel(event, OPENID)
     if (action === 'closeExpired') return await closeExpired(event, OPENID)
     if (action === 'createPayment') return await createPayment(event, OPENID)
+    if (action === 'ship') return await ship(event, OPENID)
     if (action === 'confirmReceive') return await confirmReceive(event, OPENID)
 
     return {
@@ -795,7 +970,9 @@ exports.main = async (event = {}) => {
     console.error('[productOrder] failed', action, error)
     return {
       success: false,
-      message: error.code || error.message || 'PRODUCT_ORDER_FAILED',
+      message: isCollectionMissingError(error)
+        ? 'ORDER_COLLECTION_MISSING'
+        : (error.code || error.message || 'PRODUCT_ORDER_FAILED'),
     }
   }
 }
