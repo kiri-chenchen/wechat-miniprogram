@@ -1,0 +1,76 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/message/message",
+    "pages/cart/cart",
+    "pages/me/me",
+    "pages/welcome/welcome",
+    "pages/login/login",
+    "pages/notePublish/notePublish",
+    "pages/noteDetail/noteDetail",
+    "pages/messageInteraction/messageInteraction",
+    "pages/messageMerchant/messageMerchant",
+    "pages/messageMerchantChat/messageMerchantChat",
+    "pages/messagePlatform/messagePlatform",
+    "pages/messagePlatformSupport/messagePlatformSupport",
+    "pages/messagePlatformGuarantee/messagePlatformGuarantee",
+    "pages/messageBuddyApply/messageBuddyApply",
+    "pages/messageBuddyApplyChat/messageBuddyApplyChat",
+    "pages/messageConversation/messageConversation",
+    "pages/permissionSettings/permissionSettings",
+    "pages/registerProfile/registerProfile",
+    "pages/dnaTag/dnaTag",
+    "pages/buddyIntent/buddyIntent",
+    "pages/activityDetail/activityDetail",
+    "pages/productDetail/productDetail",
+    "pages/scenicDetail/scenicDetail",
+    "pages/hotelDetail/hotelDetail",
+    "pages/search/search",
+    "pages/searchResults/searchResults",
+    "pages/askXiaohe/askXiaohe",
+    "pages/askXiaoheChat/askXiaoheChat",
+    "pages/regionSelect/regionSelect",
+    "pages/book/book",
+    "pages/order/order",
+    "pages/travelerSelect/travelerSelect",
+    "pages/travelerEdit/travelerEdit",
+    "pages/myActivities/myActivities",
+    "pages/activityOrderDetail/activityOrderDetail",
+    "pages/activityReview/activityReview",
+    "pages/myOrders/myOrders",
+    "pages/reviewCenter/reviewCenter",
+    "pages/favorites/favorites",
+    "pages/favoritesEdit/favoritesEdit",
+    "pages/ruralFun/ruralFun",
+    "pages/academy/academy",
+    "pages/knowledgeDetail/knowledgeDetail",
+    "pages/hotel/hotel",
+    "pages/mall/mall",
+    "pages/qaCenter/qaCenter"
+  ],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "\u7528\u4e8e\u4e3a\u60a8\u63a8\u8350\u9644\u8fd1\u9152\u5e97\u6c11\u5bbf\u3001\u6d3b\u52a8\u4e0e\u666f\u70b9\uff0c\u5e76\u663e\u793a\u5f53\u524d\u6240\u5728\u57ce\u5e02"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
+  ],
+  "window": {
+    "navigationBarTitleText": "\u519c\u65c5e\u7ad9",
+    "navigationBarBackgroundColor": "#F8F8F8",
+    "navigationBarTextStyle": "black"
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#57984a",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "\u9996\u9875" },
+      { "pagePath": "pages/message/message", "text": "\u6d88\u606f" },
+      { "pagePath": "pages/cart/cart", "text": "\u8d2d\u7269\u8f66" },
+      { "pagePath": "pages/me/me", "text": "\u6211\u7684" }
+    ]
+  }
+}

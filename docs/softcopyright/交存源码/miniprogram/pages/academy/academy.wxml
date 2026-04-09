@@ -1,0 +1,89 @@
+<view class="page container-safe">
+  <view class="hero">
+    <image
+      wx:if="{{heroCover}}"
+      class="hero-bg"
+      src="{{heroCover}}"
+      mode="aspectFill"
+    ></image>
+    <view class="hero-bg hero-placeholder" wx:else></view>
+    <view class="hero-mask"></view>
+    <view class="hero-content">
+      <view class="hero-chip">{{activeTab === 'agri' ? '农事资讯' : '文旅资讯'}}</view>
+      <view class="hero-title">农旅宝典</view>
+      <view class="hero-subtitle">
+        {{activeTab === 'agri' ? '聚焦农业、乡村与实用内容' : '聚焦景点文化、民俗非遗与游玩知识'}}
+      </view>
+      <view class="hero-desc">
+        {{activeTab === 'agri' ? '内容来自云数据库，支持控制台持续维护' : '图片走云存储，文章内容可在云开发控制台直接更新'}}
+      </view>
+    </view>
+  </view>
+
+  <view class="sheet">
+    <view class="tab-row">
+      <view class="tab {{activeTab === 'agri' ? 'active' : ''}}" data-tab="agri" bindtap="switchTab">农事宝典</view>
+      <view class="tab {{activeTab === 'culture' ? 'active' : ''}}" data-tab="culture" bindtap="switchTab">文旅课堂</view>
+    </view>
+
+    <scroll-view class="category-scroll" scroll-x enable-flex show-scrollbar="false">
+      <view class="category-list">
+        <block wx:for="{{categories}}" wx:key="index">
+          <view
+            class="category-chip {{currentCategory === item ? 'selected' : ''}}"
+            data-category="{{item}}"
+            bindtap="switchCategory"
+          >
+            {{item}}
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+
+    <view class="feed-head">
+      <view>
+        <view class="feed-title">{{activeTab === 'agri' ? '今日农事' : '今日文旅'}}</view>
+        <view class="feed-subtitle">{{activeTab === 'agri' ? '农业、乡村、实用经验' : '文化、体验、游玩知识'}}</view>
+      </view>
+      <view class="feed-count">{{filteredList.length}} 篇内容</view>
+    </view>
+
+    <view class="loading-box" wx:if="{{loading}}">正在加载文章...</view>
+
+    <block wx:elif="{{filteredList.length}}">
+      <block wx:for="{{filteredList}}" wx:key="id">
+        <view class="news-card" data-id="{{item.id}}" bindtap="goDetail">
+          <view class="news-main">
+            <view class="news-left">
+              <view class="news-title">{{item.title}}</view>
+              <view class="news-author">{{item.author}}</view>
+              <view class="news-time">{{item.publishTime}}</view>
+              <view class="news-tag-row">
+                <block wx:for="{{item.tags}}" wx:key="index" wx:for-item="tag">
+                  <text class="news-tag">{{tag}}</text>
+                </block>
+              </view>
+            </view>
+            <view class="news-right">
+              <image class="cover" src="{{item.cover}}" mode="aspectFill"></image>
+              <view class="cover-views">{{item.views}}</view>
+            </view>
+          </view>
+          <view class="news-meta-row">
+            <view class="news-wordcount">{{item.wordCount}}字</view>
+            <view class="footer-right">
+              <text class="stat-item">赞 {{item.likes}}</text>
+              <text class="stat-item">评 {{item.comments}}</text>
+              <text class="stat-item">转 {{item.shareCount}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </block>
+
+    <view class="empty-box" wx:else>
+      <view class="empty-title">当前分类还没有内容</view>
+      <view class="empty-text">你可以先在云开发控制台新增文章，再回来查看展示效果。</view>
+    </view>
+  </view>
+</view>

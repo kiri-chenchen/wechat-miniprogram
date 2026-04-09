@@ -1,0 +1,84 @@
+<view class="container">
+
+<!-- 出行日期 -->
+<view class="card">
+  <view class="title">请选择出行日期</view>
+
+  <picker mode="date"
+          value="{{travelDate}}"
+          start="{{today}}"
+          bindchange="onDateChange">
+
+    <view class="picker">
+      <text wx:if="{{travelDate}}">{{travelDate}}</text>
+      <text wx:else class="placeholder">点击选择日期</text>
+    </view>
+
+  </picker>
+</view>
+
+
+<!-- 出行人数 -->
+<view class="card">
+
+  <view class="title">请选择出行人数</view>
+
+  <!-- 成人 -->
+  <view class="row">
+
+    <text>成人</text>
+
+    <view class="counter">
+
+      <button class="btn"
+              bindtap="minusAdult"
+              disabled="{{adultCount<=0}}">-</button>
+
+      <text class="num">{{adultCount}}</text>
+
+      <button class="btn"
+              bindtap="addAdult">+</button>
+
+    </view>
+
+  </view>
+
+
+  <!-- 儿童 -->
+  <view class="row">
+
+    <text>儿童</text>
+
+    <view class="counter">
+
+      <button class="btn"
+              bindtap="minusChild"
+              disabled="{{childCount<=0}}">-</button>
+
+      <text class="num">{{childCount}}</text>
+
+      <button class="btn"
+              bindtap="addChild">+</button>
+
+    </view>
+
+  </view>
+
+  <view class="child-tip">
+    儿童年龄不得超过12周岁（不含）
+  </view>
+
+</view>
+
+
+<!-- 下一步 -->
+<view class="bottom">
+
+  <button class="next"
+          bindtap="goNext">
+    下一步，填写订单
+  </button>
+
+</view>
+
+</view>

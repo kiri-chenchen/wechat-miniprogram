@@ -5,29 +5,34 @@
     <view class="icon-btn" bindtap="onAddTap">＋</view>
   </view>
 
-  <scroll-view wx:if="{{storyList.length}}" class="story-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
-    <view
-      wx:for="{{storyList}}"
-      wx:key="id"
-      class="story-item"
-      data-kind="{{item.kind}}"
-      data-entry-type="{{item.entryType}}"
-      data-id="{{item.id}}"
-      data-note-id="{{item.noteId}}"
-      bindtap="openStory"
-    >
-      <view wx:if="{{item.avatarUrl}}" class="story-avatar image-avatar">
-        <image class="story-avatar-image" src="{{item.avatarUrl}}" mode="aspectFill" />
-        <view wx:if="{{item.kind === 'self-note'}}" class="story-plus">+</view>
+  <view class="storySection">
+    <view class="storySectionTitle">好友/搭子新笔记</view>
+    <scroll-view wx:if="{{storyList.length}}" class="story-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+      <view
+        wx:for="{{storyList}}"
+        wx:key="id"
+        class="story-item"
+        data-kind="{{item.kind}}"
+        data-entry-type="{{item.entryType}}"
+        data-id="{{item.id}}"
+        data-note-id="{{item.noteId}}"
+        bindtap="openStory"
+      >
+        <view wx:if="{{item.avatarUrl}}" class="story-avatar image-avatar">
+          <image class="story-avatar-image" src="{{item.avatarUrl}}" mode="aspectFill" />
+        </view>
+        <view wx:else class="story-avatar" style="background: {{item.avatarColor}};">
+          <text>{{item.avatarText}}</text>
+        </view>
+        <view wx:if="{{item.unreadText}}" class="story-badge">{{item.unreadText}}</view>
+        <view wx:if="{{item.noteTitle}}" class="story-dot"></view>
+        <view class="story-title">{{item.title}}</view>
       </view>
-      <view wx:else class="story-avatar" style="background: {{item.avatarColor}};">
-        <text>{{item.avatarText}}</text>
-      </view>
-      <view wx:if="{{item.unreadText}}" class="story-badge">{{item.unreadText}}</view>
-      <view wx:if="{{item.noteTitle}}" class="story-dot"></view>
-      <view class="story-title">{{item.title}}</view>
+    </scroll-view>
+    <view wx:else class="storyEmpty">
+      好友或搭子发布新笔记后，会显示在这里
     </view>
-  </scroll-view>
+  </view>
 
   <view class="list">
     <view

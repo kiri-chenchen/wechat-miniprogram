@@ -1,22 +1,19 @@
 <view class="page">
-  <view class="hero">
-    <text class="heroTitle">乡野乐事</text>
-    <text class="heroDesc">按标签推荐活动，先作为首页入口页承接内容，后续我们可以继续细化成完整布局。</text>
-  </view>
-
-  <scroll-view class="tagScroll" scroll-x="{{true}}" enable-flex="{{true}}" show-scrollbar="{{false}}">
-    <view class="tagRow">
-      <view
-        wx:for="{{tagGroups}}"
-        wx:key="id"
-        class="filterTag {{activeTagIndex===index ? 'active' : ''}}"
-        data-idx="{{index}}"
-        bindtap="changeTag"
-      >
-        {{item.title}}
+  <view class="tabBarWrap">
+    <scroll-view class="tagScroll" scroll-x="{{true}}" enable-flex="{{true}}" show-scrollbar="{{false}}">
+      <view class="tagRow">
+        <view
+          wx:for="{{tagGroups}}"
+          wx:key="id"
+          class="filterTag {{activeTagIndex===index ? 'active' : ''}}"
+          data-idx="{{index}}"
+          bindtap="changeTag"
+        >
+          {{item.title}}
+        </view>
       </view>
-    </view>
-  </scroll-view>
+    </scroll-view>
+  </view>
 
   <view class="cardList">
     <view
@@ -33,6 +30,10 @@
           <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
         </view>
       </view>
+    </view>
+
+    <view wx:if="{{!showList.length}}" class="emptyState">
+      当前分类下暂无活动
     </view>
   </view>
 </view>

@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="ambient ambientOne"></view>
+  <view class="ambient ambientTwo"></view>
+
+  <view class="topbar">
+    <view class="backBtn" bindtap="goBack">返</view>
+    <view class="titleWrap">
+      <view class="title">{{text.title}}</view>
+      <view class="subtitle">{{text.subtitle}}</view>
+    </view>
+  </view>
+
+  <view class="heroCard">
+    <view class="heroEyebrow">裕小禾</view>
+    <view class="heroTitle">{{text.introTitle}}</view>
+    <view class="heroDesc">{{text.introDesc}}</view>
+
+    <view class="actionRow">
+      <view class="primaryAction" bindtap="goChat">{{text.primaryAction}}</view>
+      <view class="secondaryAction" bindtap="goSearch">{{text.secondaryAction}}</view>
+    </view>
+  </view>
+
+  <view class="exampleCard">
+    <view class="sectionTitle">{{text.sectionTitle}}</view>
+    <view class="exampleList">
+      <view
+        class="exampleItem"
+        wx:for="{{exampleQuestions}}"
+        wx:key="*this"
+        data-question="{{item}}"
+        bindtap="useExample"
+      >
+        <view class="exampleDot"></view>
+        <view class="exampleText">{{item}}</view>
+      </view>
+    </view>
+  </view>
+</view>

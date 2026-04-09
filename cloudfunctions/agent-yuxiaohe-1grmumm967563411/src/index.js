@@ -14,11 +14,18 @@ import {
   DetectCloudbaseUserMiddleware,
   buildAgentUserPrompt,
   buildBuddyMatchResult,
+  buildConversationStateResult,
+  buildGuideGroundingPayload,
   buildGuideCustomizationResult,
   buildPlatformGroundingContext,
   buildConversationWorkflow,
+  buildUnifiedTaskState,
 } from "./utils.js";
-import { buildDirectAnswer } from "./direct-answer.js";
+import {
+  buildDirectAnswer,
+  buildLocationQueryResult,
+  buildWeatherQueryResult,
+} from "./direct-answer.js";
 
 dotenvx.config();
 
@@ -223,6 +230,12 @@ function normalizeBotHistory(history = []) {
 }
 
 async function buildAgentInputFromBotBody(body = {}, cloudbaseUserId = "") {
+  console.log("[agent-yuxiaohe] buildAgentInputFromBotBody start", {
+    hasMsg: !!body?.msg,
+    historyLength: Array.isArray(body?.history) ? body.history.length : 0,
+    hasContextPayload: !!body?.contextPayload,
+    hasCloudbaseUserId: !!cloudbaseUserId,
+  });
   const historyMessages = normalizeBotHistory(body?.history);
   const msg = String(body?.msg || "").trim();
 
@@ -230,13 +243,45 @@ async function buildAgentInputFromBotBody(body = {}, cloudbaseUserId = "") {
     throw new Error("msg is required");
   }
 
-  const groundingContext = await buildPlatformGroundingContext(
-    body?.contextPayload || {}
-  );
   const workflowContext = await buildConversationWorkflow({
     question: msg,
     contextPayload: body?.contextPayload || {},
     cloudbaseUserId,
+  });
+  console.log("[agent-yuxiaohe] buildAgentInputFromBotBody workflowContext", {
+    mainline: workflowContext?.mainline || "",
+    isReady: !!workflowContext?.isReady,
+    missingField: workflowContext?.missingField?.key || workflowContext?.missingField || "",
+  });
+  const unifiedTaskState = await buildUnifiedTaskState({
+    question: msg,
+    contextPayload: body?.contextPayload || {},
+    cloudbaseUserId,
+  });
+  console.log("[agent-yuxiaohe] buildAgentInputFromBotBody unifiedTaskState", {
+    mainline: unifiedTaskState?.mainline || "",
+    isReady: !!unifiedTaskState?.isReady,
+    missingField: unifiedTaskState?.missingField?.key || "",
+    collectedKeys: Object.keys((unifiedTaskState && unifiedTaskState.collected) || {}),
+  });
+  const guideFields =
+    workflowContext?.mainline === "guide_customization" &&
+    (workflowContext?.fields || unifiedTaskState?.collected)
+      ? workflowContext?.fields || unifiedTaskState?.collected || {}
+      : null;
+  const groundingPayload = guideFields
+    ? buildGuideGroundingPayload({
+        question: msg,
+        contextPayload: body?.contextPayload || {},
+        guideFields,
+      })
+    : body?.contextPayload || {};
+  const groundingContext = await buildPlatformGroundingContext(groundingPayload);
+  console.log("[agent-yuxiaohe] buildAgentInputFromBotBody groundingContext", {
+    regionLabel: groundingContext?.regionLabel || "",
+    candidateCount: Array.isArray(groundingContext?.candidates)
+      ? groundingContext.candidates.length
+      : 0,
   });
   const groundedMessageContent = buildAgentUserPrompt({
     question: msg,
@@ -261,6 +306,8 @@ async function buildAgentInputFromBotBody(body = {}, cloudbaseUserId = "") {
       groundingRegion: groundingContext?.regionLabel || "",
       groundingCandidateCount: groundingContext?.candidates?.length || 0,
       mainline: workflowContext?.mainline || "",
+      unifiedTaskState,
+      unifiedTaskStateText: JSON.stringify(unifiedTaskState),
     },
   };
 }
@@ -322,6 +369,7 @@ async function handleBotSendMessage(req, res) {
       hasCloudbaseUserId: !!cloudbaseUserId,
       groundingRegion: input.forwardedProps?.groundingRegion || "",
       groundingCandidateCount: input.forwardedProps?.groundingCandidateCount || 0,
+      unifiedTaskState: input.forwardedProps?.unifiedTaskState || {},
     });
 
     res.setHeader("Content-Type", "text/event-stream");
@@ -330,6 +378,10 @@ async function handleBotSendMessage(req, res) {
     res.flushHeaders?.();
 
     const events = agui.sendMessageAGUI.handler(input, agent);
+    console.log("[agent-yuxiaohe] bot send-message stream start", {
+      threadId: input.threadId,
+      runId: input.runId,
+    });
 
     for await (const event of events) {
       console.log("[agent-yuxiaohe] bot send-message event", {
@@ -354,6 +406,10 @@ async function handleBotSendMessage(req, res) {
       }
 
       if (event?.type === "TEXT_MESSAGE_END") {
+        console.log("[agent-yuxiaohe] bot send-message TEXT_MESSAGE_END", {
+          chunkCount,
+          totalLength: textBuffer.length,
+        });
         break;
       }
     }
@@ -434,6 +490,81 @@ async function handleGuideCustomization(req, res) {
   }
 }
 
+async function handleConversationState(req, res) {
+  try {
+    const body = req.body || {};
+    const cloudbaseUserId =
+      String(body.cloudbaseUserId || "").trim() || extractCloudbaseUserId(req);
+    console.log("[agent-yuxiaohe] conversation-state start", {
+      hasQuestion: !!body.question,
+      historyLength: Array.isArray(body?.contextPayload?.history)
+        ? body.contextPayload.history.length
+        : 0,
+      hasCurrentTaskState: !!body?.contextPayload?.currentTaskState,
+      hasCloudbaseUserId: !!cloudbaseUserId,
+    });
+    const result = await buildConversationStateResult({
+      question: String(body.question || "").trim(),
+      contextPayload: body.contextPayload || {},
+      cloudbaseUserId,
+    });
+    console.log("[agent-yuxiaohe] conversation-state success", {
+      mainline: result?.mainline || "",
+      isReady: !!result?.isReady,
+      missingField: result?.missingField?.key || result?.missingField || "",
+      candidateCount: Array.isArray(result?.candidates) ? result.candidates.length : 0,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("[agent-yuxiaohe] conversation-state failed", error);
+    res.status(500).json({
+      success: false,
+      message: "浼氳瘽鐘舵€佹湇鍔℃殏鏃朵笉鍙敤",
+      error: error?.message || String(error),
+    });
+  }
+}
+
+async function handleWeatherQuery(req, res) {
+  try {
+    const body = req.body || {};
+    const result = await buildWeatherQueryResult({
+      question: String(body.question || "").trim(),
+      contextPayload: body.contextPayload || {},
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("[agent-yuxiaohe] weather-query failed", error);
+    res.status(500).json({
+      success: false,
+      subType: "weather",
+      answer: "实时天气暂不可用，刚才查询天气服务时失败了。你可以稍后再试。",
+      error: error?.message || String(error),
+    });
+  }
+}
+
+async function handleLocationQuery(req, res) {
+  try {
+    const body = req.body || {};
+    const result = await buildLocationQueryResult({
+      contextPayload: body.contextPayload || {},
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("[agent-yuxiaohe] location-query failed", error);
+    res.status(500).json({
+      success: false,
+      subType: "location",
+      answer: "位置未获取成功。你可以先开启定位权限，或者直接告诉我你所在的城市。",
+      error: error?.message || String(error),
+    });
+  }
+}
+
 const app = express();
 
 app.use((req, res, next) => {
@@ -449,6 +580,12 @@ app.post("/send-message", express.json(), handleBotSendMessage);
 app.post("/api/buddy-match", express.json(), handleBuddyMatch);
 
 app.post("/api/guide-customization", express.json(), handleGuideCustomization);
+
+app.post("/api/conversation-state", express.json(), handleConversationState);
+
+app.post("/api/weather-query", express.json(), handleWeatherQuery);
+
+app.post("/api/location-query", express.json(), handleLocationQuery);
 
 app.post(
   "/v1/aibot/bots/:agentId/send-message",

@@ -1,0 +1,30 @@
+[
+  {
+    "articleId": "redtour-001",
+    "usage": "cover",
+    "localFile": "E:\\三创赛\\docs\\redtour-media\\source\\image1.jpeg",
+    "targetCloudPath": "knowledge/covers/redtour-shenjialing-gongjian-cover.jpg",
+    "targetFileID": "cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/covers/redtour-shenjialing-gongjian-cover.jpg"
+  },
+  {
+    "articleId": "redtour-001",
+    "usage": "content",
+    "localFile": "E:\\三创赛\\docs\\redtour-media\\source\\image1.jpeg",
+    "targetCloudPath": "knowledge/content/redtour-shenjialing-gongjian-1.jpg",
+    "targetFileID": "cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/content/redtour-shenjialing-gongjian-1.jpg"
+  },
+  {
+    "articleId": "redtour-001",
+    "usage": "content",
+    "localFile": "E:\\三创赛\\docs\\redtour-media\\source\\image2.jpeg",
+    "targetCloudPath": "knowledge/content/redtour-shenjialing-gongjian-2.jpg",
+    "targetFileID": "cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/content/redtour-shenjialing-gongjian-2.jpg"
+  },
+  {
+    "articleId": "redtour-002",
+    "usage": "cover",
+    "localFile": "E:\\三创赛\\docs\\redtour-media\\source\\image2.jpeg",
+    "targetCloudPath": "knowledge/covers/redtour-xuezhan-shenjialing-cover.jpg",
+    "targetFileID": "cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/covers/redtour-xuezhan-shenjialing-cover.jpg"
+  }
+]

@@ -1,0 +1,215 @@
+const cloud = require('wx-server-sdk')
+
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
+const db = cloud.database()
+
+const redTourArticles = [
+  {
+    _id: 'redtour-001',
+    seedKey: 'redtour-001',
+    channel: 'redtour',
+    status: 'published',
+    title: '沈家岭攻坚战：我军如何打开兰州“锁钥”？',
+    publishTime: '2026-04-09 20:30',
+    tags: ['兰州战役', '红旅研学', '革命旧址'],
+    wordCount: 1860,
+    summary: '围绕沈家岭攻坚战的战役背景、险峻地形与总攻过程展开梳理，适合作为前往兰州红色旧址前的阅读材料。',
+    cover: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/covers/redtour-shenjialing-gongjian-cover.jpg',
+    views: 0,
+    likes: 0,
+    favorites: 0,
+    comments: 0,
+    shareCount: 0,
+    author: '农旅宝典红旅编辑部',
+    isPinned: true,
+    content: [
+      {
+        type: 'paragraph',
+        text: '沈家岭位于兰州城西南方向，是解放兰州战役中的关键高地。原文资料指出，1949年7月扶眉战役结束后，第一野战军持续西进，至8月逐步完成对兰州外围的兵力展开，而兰州南侧的沈家岭、营盘岭、马家山等主阵地，正是敌军企图凭借地形死守的核心防线。',
+      },
+      {
+        type: 'image',
+        src: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/content/redtour-shenjialing-gongjian-1.jpg',
+      },
+      {
+        type: 'paragraph',
+        text: '资料配图说明了战斗中“战士们撑杆越壕”的场景，也从侧面反映出这场攻坚战面对的并不是普通山地，而是经过长期经营、兼具峭壁、堑壕、地堡与雷区的复合阵地。',
+      },
+      {
+        type: 'heading',
+        text: '一、为什么沈家岭被称作“兰州锁钥”',
+      },
+      {
+        type: 'paragraph',
+        text: '从地形上看，沈家岭是一道葫芦形山梁，北侧可直逼兰州城区，东西两侧多深沟陡坡，守军容易获得城内火力支援，而进攻部队只能由南向北仰攻。资料中提到，敌军在这里构筑了钢筋混凝土碉堡、环形堑壕、交通壕和布雷场，还削出绝壁阻挡冲锋，因此它不仅是外围高地，更是决定兰州城防体系是否会被撕开的咽喉位置。',
+      },
+      {
+        type: 'paragraph',
+        text: '正因为沈家岭与兰州守敌存亡与共，它一旦失守，敌军退往黄河铁桥的通道就会受到直接威胁，整个防御体系也会被迫动摇，这也是资料中反复出现“兰州锁钥”这一说法的原因。',
+      },
+      {
+        type: 'heading',
+        text: '二、从第一次攻击受挫到重新组织总攻',
+      },
+      {
+        type: 'paragraph',
+        text: '1949年8月21日，第一野战军对兰州外围阵地发起第一次大规模冲击。承担沈家岭方向任务的部队在敌军居高临下的猛烈火力压制下，多次冲击未能奏效，伤亡较重。随后，指挥员根据战场情况果断停止强攻，总结教训、调整战法，并为再次总攻争取准备时间。',
+      },
+      {
+        type: 'paragraph',
+        text: '资料详细记录了前沿部队在雨中坚持、挖掘工事和推进冲击出发阵地的过程。连续阴雨、敌火封锁、补给困难与敌军偷袭，使得战斗在总攻发起前就已经极为艰苦，但这些准备为后续突破敌前沿壕堑创造了条件。',
+      },
+      {
+        type: 'image',
+        src: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/content/redtour-shenjialing-gongjian-2.jpg',
+      },
+      {
+        type: 'paragraph',
+        text: '第二张配图记录了“我军把红旗插上沈家岭主阵地”的瞬间，也对应了资料中对多轮冲锋、逐壕争夺和主峰反复易手的描述。',
+      },
+      {
+        type: 'heading',
+        text: '三、8月25日的反复拼杀',
+      },
+      {
+        type: 'paragraph',
+        text: '8月25日拂晓，总攻正式展开。战斗并非一击即成，而是从外壕、第一道堑壕、第二道堑壕到主峰阵地的连续推进。资料中写到，进攻部队借助炸药包、梯子、撑杆等方式越过障碍，在炮火支援下打开缺口，随后敌军又组织密集反扑，双方在交通壕、地堡和山脊之间多次反复争夺。',
+      },
+      {
+        type: 'paragraph',
+        text: '在这场战斗中，许多一线指战员的名字被原文保留下来。无论是顶着火力推进的突击排，还是在关键时刻抱着炸药包冲向敌堡、坚守交通壕、补送弹药的战士，都让这场战役不只是战术教科书中的高地攻坚，更是一段由具体人物共同完成的胜利记忆。',
+      },
+      {
+        type: 'heading',
+        text: '四、沈家岭攻坚战的历史意义',
+      },
+      {
+        type: 'paragraph',
+        text: '资料显示，经过长达十余小时的激烈争夺，解放军最终完全占领沈家岭，打开了兰州外围防线的关键缺口，敌军全线开始崩溃。次日兰州解放，马步芳部主力损失惨重，西北战局也由此发生决定性转折。',
+      },
+      {
+        type: 'paragraph',
+        text: '如果把这篇文章作为红旅阅读材料，它最大的价值不只是帮助读者知道“这里打过仗”，而是能在抵达旧址之前先建立起战场地形、兵力部署、攻坚难点与胜利代价的整体认识。真正站到旧址现场时，读者会更容易理解那一处碉堡、一段壕沟、一面山坡为什么值得被今天的人反复纪念。',
+      },
+    ],
+    location: null,
+    commentList: [],
+  },
+  {
+    _id: 'redtour-002',
+    seedKey: 'redtour-002',
+    channel: 'redtour',
+    status: 'published',
+    title: '血战沈家岭',
+    publishTime: '2026-04-09 20:45',
+    tags: ['兰州战役', '红色阅读', '战史解析'],
+    wordCount: 1240,
+    summary: '聚焦沈家岭战斗的地形特点、战术调整与最终夺取主阵地的过程，适合作为兰州战役专题阅读内容。',
+    cover: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/knowledge/covers/redtour-xuezhan-shenjialing-cover.jpg',
+    views: 0,
+    likes: 0,
+    favorites: 0,
+    comments: 0,
+    shareCount: 0,
+    author: '农旅宝典红旅编辑部',
+    isPinned: false,
+    content: [
+      {
+        type: 'paragraph',
+        text: '第二篇资料《血战沈家岭》将视角进一步收束到战场本身。文章开头就指出，沈家岭位于兰州南侧，站在岭上可以俯瞰城区、顺岭北下则可直逼城市核心，因此成为守军竭力固守、我军必须拿下的关键高地。',
+      },
+      {
+        type: 'heading',
+        text: '一、险恶地形决定了这是一场硬仗',
+      },
+      {
+        type: 'paragraph',
+        text: '资料将沈家岭的防御条件概括得非常清楚：南陡北缓、东西两侧深沟陡坡，敌军依托钢筋混凝土工事、绝壁、低碉堡群、堑壕与雷区构成纵深防御，而我军只能沿受火力控制的正面与侧翼艰难推进。对进攻方而言，这意味着必须在有限地带不断承受火力压制，同时解决障碍、破堡和后续兵力接续的问题。',
+      },
+      {
+        type: 'heading',
+        text: '二、第一次攻击后，战法迅速调整',
+      },
+      {
+        type: 'paragraph',
+        text: '文章特别强调，8月21日全线攻击未达预期后，指挥员没有继续机械强攻，而是及时总结原因、重新估计敌情与地形，并据此优化部署。主攻、助攻、第二梯队和预备队的关系被重新梳理，形成了更强调火力压制、侧后迂回和梯次投入的总攻方案。',
+      },
+      {
+        type: 'paragraph',
+        text: '这种调整让后续作战不再只是“往前冲”，而是在战场组织上形成配合：正面部队负责持续撕开口子，迂回兵力牵制与打乱敌军节奏，预备队在关键时刻投入，保证主峰争夺一旦出现突破就能迅速扩大成果。',
+      },
+      {
+        type: 'heading',
+        text: '三、真正决定胜负的是持续不断的兵力接续',
+      },
+      {
+        type: 'paragraph',
+        text: '8月25日总攻开始后，沈家岭主阵地并不是一举夺下，而是在反复冲锋、反扑、肉搏与再投入中逐步稳住。资料写到，当敌军连续增援、阵地几易其手时，后续部队的及时加入使我方战斗力重新得到加强，最终守军失去组织有效反扑的能力，沈家岭全部阵地被完全占领。',
+      },
+      {
+        type: 'paragraph',
+        text: '这篇文章的价值在于，它把“胜利”拆解成一系列更具体的条件：正确判断地形、在受挫后及时调整战术、集中优势火力于主要突击方向，并始终掌握和使用好预备队。对于红旅内容而言，这种战史梳理能帮助读者理解一处旧址背后的军事逻辑，而不只是停留在纪念层面。',
+      },
+      {
+        type: 'heading',
+        text: '四、从沈家岭到兰州解放',
+      },
+      {
+        type: 'paragraph',
+        text: '资料最后指出，沈家岭被攻克后，兰州外围防线迅速崩溃，敌军开始溃逃，26日解放军进入城区，兰州宣告解放。兰州战役共歼敌四万余人，马步芳部精锐损失殆尽，西北战局由此发生根本变化。',
+      },
+      {
+        type: 'paragraph',
+        text: '因此，把《血战沈家岭》放进“农旅宝典”的红旅栏目，并不只是补充一篇历史稿件，而是在为红色研学、战史阅读和现场参观之间搭建一条内容链路。读者先在栏目中建立理解，再到旧址实地观看，体验会更完整。',
+      },
+    ],
+    location: null,
+    commentList: [],
+  },
+]
+
+function buildSeedRecord(item) {
+  return {
+    ...item,
+    updatedAt: db.serverDate(),
+  }
+}
+
+exports.main = async () => {
+  const collection = db.collection('knowledgeArticles')
+  const result = {
+    total: redTourArticles.length,
+    created: 0,
+    updated: 0,
+    ids: [],
+  }
+
+  for (const item of redTourArticles) {
+    const queryRes = await collection.where({ seedKey: item.seedKey }).limit(1).get()
+
+    if (queryRes.data.length) {
+      const existed = queryRes.data[0]
+      await collection.doc(existed._id).update({
+        data: buildSeedRecord(item),
+      })
+      result.updated += 1
+      result.ids.push(existed._id)
+      continue
+    }
+
+    const addRes = await collection.add({
+      data: {
+        ...buildSeedRecord(item),
+        createdAt: db.serverDate(),
+      },
+    })
+    result.created += 1
+    result.ids.push(addRes._id)
+  }
+
+  return {
+    success: true,
+    message: 'seed knowledge articles finished',
+    ...result,
+  }
+}

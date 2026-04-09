@@ -1,0 +1,45 @@
+<view class="page">
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab {{currentTab===item.key?'active':''}}"
+      data-tab="{{item.key}}"
+      bindtap="switchTab">
+      {{item.label}}
+    </view>
+  </view>
+
+  <view wx:if="{{displayList.length === 0}}" class="emptyWrap">
+    <view class="emptyIcon"></view>
+    <view class="emptyTitle">{{emptyTitle}}</view>
+    <view class="emptyDesc">{{emptyDesc}}</view>
+  </view>
+
+  <view wx:for="{{displayList}}" wx:key="_id" class="orderCard" data-id="{{item._id}}" bindtap="goDetail">
+    <view class="cardHeader">
+      <view class="orderType">{{item.orderTypeText}}</view>
+      <view class="status {{item.statusClass}}">{{item.displayStatusText}}</view>
+    </view>
+
+    <view class="cardBody">
+      <image
+        wx:if="{{item.cover}}"
+        class="cover"
+        src="{{item.cover}}"
+        mode="aspectFill">
+      </image>
+      <view wx:else class="cover placeholderCover"></view>
+
+      <view class="info">
+        <view class="title">{{item.title}}</view>
+        <view class="meta">{{item.summary}}</view>
+        <view class="meta">{{item.createdAtText}}</view>
+      </view>
+    </view>
+
+    <view class="cardFooter">
+      <view class="price">￥{{item.totalPriceText}}</view>
+    </view>
+  </view>
+</view>

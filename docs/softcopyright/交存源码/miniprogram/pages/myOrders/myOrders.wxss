@@ -1,0 +1,174 @@
+﻿.page{
+  min-height: 100vh;
+  background: #f6faf4;
+}
+
+.tabs{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  padding: 0 12rpx;
+  background: #ffffff;
+  border-bottom: 1rpx solid #e2eadf;
+}
+
+.tab{
+  position: relative;
+  flex: 1;
+  padding: 26rpx 0 22rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #7f8794;
+}
+
+.tab.active{
+  color: #1f2a1f;
+  font-weight: 700;
+}
+
+.tab.active::after{
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6rpx;
+  width: 34rpx;
+  height: 6rpx;
+  margin-left: -17rpx;
+  border-radius: 999rpx;
+  background: #1f2a1f;
+}
+
+.emptyWrap{
+  display: flex;
+  min-height: 58vh;
+  padding: 120rpx 48rpx 0;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.emptyIcon{
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(180deg, #f5f6f8 0%, #e5efe1 100%);
+}
+
+.emptyTitle{
+  margin-top: 28rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #233123;
+}
+
+.emptyDesc{
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #99a598;
+}
+
+.orderCard{
+  margin: 20rpx 24rpx 0;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+}
+
+.cardHeader{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.orderType{
+  font-size: 24rpx;
+  color: #8d96a3;
+}
+
+.status{
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.status.pending_payment,
+.status.pending_review{
+  color: #57984a;
+}
+
+.status.cancelled,
+.status.withdrawn{
+  color: #99a598;
+}
+
+.status.pending_trip,
+.status.pending_receive,
+.status.signed_pending_confirm{
+  color: #667566;
+}
+
+.status.refunding{
+  color: #57984a;
+}
+
+.status.refunded,
+.status.success{
+  color: #57984a;
+}
+
+.status.reviewed{
+  color: #2f6fed;
+}
+
+.cardBody{
+  display: flex;
+  margin-top: 20rpx;
+}
+
+.cover{
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 20rpx;
+  background: #e4eee0;
+  flex-shrink: 0;
+}
+
+.placeholderCover{
+  background: linear-gradient(180deg, #eef5ea 0%, #eceff4 100%);
+}
+
+.info{
+  min-width: 0;
+  margin-left: 20rpx;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.title{
+  font-size: 30rpx;
+  line-height: 1.5;
+  color: #181d27;
+  font-weight: 700;
+}
+
+.meta{
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #8b94a1;
+}
+
+.cardFooter{
+  margin-top: 18rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.price{
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #181d27;
+}
+

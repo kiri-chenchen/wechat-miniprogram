@@ -19,6 +19,39 @@ const ACTIVITY_MEDIA_MAP = {
     aliases: ['百合', '乡味', '手作'],
     localCover: '/images/activities/lz-bailihe-handmade-food-tour.jpg',
   },
+  'qingyang-sachet-intangible-heritage-experience': {
+    aliases: ['庆阳香包', '非遗手作', '香包体验'],
+    localCover: '/images/nav-academy.png',
+    cloudCover: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/covers/qingyang-sachet-intangible-heritage-experience.jpg',
+    cloudBanner: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/banners/qingyang-sachet-intangible-heritage-experience.jpg',
+    cloudGallery: [
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/qingyang-sachet-intangible-heritage-experience-1.jpg',
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/qingyang-sachet-intangible-heritage-experience-2.jpg',
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/qingyang-sachet-intangible-heritage-experience-3.jpg',
+    ],
+  },
+  'jiuquan-dunhuang-seal-clay-painting-workshop': {
+    aliases: ['敦煌印局', '敦煌泥板画', '泥板画体验'],
+    localCover: '/images/nav-academy.png',
+    cloudCover: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/covers/jiuquan-dunhuang-seal-clay-painting-workshop.jpg',
+    cloudBanner: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/banners/jiuquan-dunhuang-seal-clay-painting-workshop.jpg',
+    cloudGallery: [
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/jiuquan-dunhuang-seal-clay-painting-workshop-1.jpg',
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/jiuquan-dunhuang-seal-clay-painting-workshop-2.jpg',
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/jiuquan-dunhuang-seal-clay-painting-workshop-3.jpg',
+    ],
+  },
+  'lz-yuzhong-qiyun-family-farm-day': {
+    aliases: ['栖云', '农事', '亲子农事体验', '田园小镇'],
+    localCover: '/images/nav-academy.png',
+    cloudCover: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/covers/lz-yuzhong-qiyun-family-farm-day.jpg',
+    cloudBanner: 'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/banners/lz-yuzhong-qiyun-family-farm-day.jpg',
+    cloudGallery: [
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/lz-yuzhong-qiyun-family-farm-day-1.jpg',
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/lz-yuzhong-qiyun-family-farm-day-2.jpg',
+      'cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/activities/gallery/lz-yuzhong-qiyun-family-farm-day-3.jpg',
+    ],
+  },
   'lz-kushui-rose-culture-day': {
     aliases: ['苦水玫瑰', '玫瑰季', '非遗文化'],
     localCover: '/images/nav-academy.png',

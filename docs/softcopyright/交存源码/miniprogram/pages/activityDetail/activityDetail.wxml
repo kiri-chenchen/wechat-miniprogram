@@ -1,0 +1,156 @@
+<view class="page" wx:if="{{detail}}">
+  <view class="heroWrap">
+    <swiper
+      class="heroSwiper"
+      indicator-dots="{{detail.gallery.length > 1}}"
+      indicator-color="rgba(255,255,255,0.42)"
+      indicator-active-color="#ffffff"
+      autoplay="{{detail.gallery.length > 1}}"
+      touchable="{{detail.gallery.length > 1}}"
+      interval="3200"
+      duration="500"
+      circular="{{detail.gallery.length > 1}}"
+    >
+      <swiper-item wx:for="{{detail.gallery}}" wx:key="*this">
+        <image class="hero" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewGallery" />
+      </swiper-item>
+    </swiper>
+    <view class="heroMask"></view>
+
+    <view class="customNav" style="padding-top: {{statusBarHeight}}px;">
+      <view class="backBtn" bindtap="goBack">
+        <view class="backArrow"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="content">
+    <view class="title">{{detail.title}}</view>
+    <view class="summary" wx:if="{{detail.summary}}">{{detail.summary}}</view>
+
+    <view class="metaRow">
+      <view class="metaPrimary">{{detail.durationText}}</view>
+      <view class="metaTag" wx:for="{{detail.coverTags}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="infoGrid">
+      <view class="infoCard">
+        <view class="infoLabel">{{text.location}}</view>
+        <view class="infoValue">{{detail.locationText}}</view>
+        <view class="infoSub" wx:if="{{detail.regionText}}">{{detail.regionText}}</view>
+      </view>
+      <view class="infoCard">
+        <view class="infoLabel">{{text.price}}</view>
+        <view class="infoValue priceValue">{{detail.priceText}}</view>
+        <view class="infoSub">{{detail.traveledCount}} 人已出行</view>
+      </view>
+      <view class="infoCard">
+        <view class="infoLabel">{{text.transport}}</view>
+        <view class="infoValue">{{detail.transportText}}</view>
+      </view>
+      <view class="infoCard">
+        <view class="infoLabel">{{text.stay}}</view>
+        <view class="infoValue">{{detail.stayText}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.travelModeTags.length}}">
+      <view class="sectionTitle">{{text.travelMode}}</view>
+      <view class="chipWrap">
+        <view class="chip chipWarm" wx:for="{{detail.travelModeTags}}" wx:key="*this">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.playTags.length}}">
+      <view class="sectionTitle">{{text.playMode}}</view>
+      <view class="chipWrap">
+        <view class="chip" wx:for="{{detail.playTags}}" wx:key="*this">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.highlights.length}}">
+      <view class="sectionTitle">{{text.highlights}}</view>
+      <view class="listCard">
+        <view class="bulletItem" wx:for="{{detail.highlights}}" wx:key="*this">
+          <view class="bulletDot"></view>
+          <view class="bulletText">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.itinerary.length}}">
+      <view class="sectionTitle">{{text.itinerary}}</view>
+      <view class="listCard">
+        <view class="timelineItem" wx:for="{{detail.itinerary}}" wx:key="*this">
+          <view class="timelineIndex">{{index + 1}}</view>
+          <view class="timelineText">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <view class="sectionTitle">{{text.info}}</view>
+      <view class="detailCard">
+        <view class="detailRow">
+          <text class="detailLabel">{{text.pickup}}</text>
+          <text class="detailValue">{{detail.pickupText}}</text>
+        </view>
+        <view class="detailRow" wx:if="{{detail.pickupPointText}}">
+          <text class="detailLabel">{{text.pickupPoint}}</text>
+          <text class="detailValue">{{detail.pickupPointText}}</text>
+        </view>
+        <view class="detailRow">
+          <text class="detailLabel">{{text.address}}</text>
+          <text class="detailValue">{{detail.addressText}}</text>
+        </view>
+        <view class="detailRow">
+          <text class="detailLabel">{{text.phone}}</text>
+          <text class="detailValue">{{detail.phoneText}}</text>
+        </view>
+        <view class="detailRow">
+          <text class="detailLabel">{{text.duration}}</text>
+          <text class="detailValue">{{detail.durationText}}</text>
+        </view>
+        <view class="detailRow">
+          <text class="detailLabel">{{text.region}}</text>
+          <text class="detailValue">{{detail.regionText || detail.locationText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.detailText}}">
+      <view class="sectionTitle">{{text.description}}</view>
+      <view class="descriptionCard">{{detail.detailText}}</view>
+    </view>
+
+    <view class="section" wx:if="{{detail.gallery.length > 1}}">
+      <view class="sectionTitle">{{text.gallery}}</view>
+      <scroll-view class="galleryScroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <image
+          class="galleryImage"
+          wx:for="{{detail.gallery}}"
+          wx:key="*this"
+          src="{{item}}"
+          mode="aspectFill"
+          data-src="{{item}}"
+          bindtap="previewGallery"
+        />
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="bottomBar">
+    <view class="bottomMain">
+      <view class="priceBox">
+        <text class="priceLabel">{{text.priceLabel}}</text>
+        <text class="priceNum">{{detail.priceText}}</text>
+      </view>
+      <view class="favoriteBtn" bindtap="toggleFavorite">
+        <image class="favoriteIcon" src="{{favorited ? favoriteIconFilled : favoriteIcon}}" mode="aspectFit" />
+      </view>
+    </view>
+    <button class="bookBtn" bindtap="handleBook">{{text.bookNow}}</button>
+  </view>
+</view>
+
+<view wx:else class="emptyState">{{text.empty}}</view>

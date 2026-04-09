@@ -40,7 +40,7 @@
                     <view class="recommendationTitleLink">{{item.title}}</view>
                     <view class="buddyStatusTag" wx:if="{{item.statusTag}}">{{item.statusTag}}</view>
                   </view>
-                  <view class="buddyScore">{{item.matchScoreText}}</view>
+                  <view class="buddyScore" wx:if="{{item.matchScoreText}}">{{item.matchScoreText}}</view>
                 </view>
                 <view wx:else class="recommendationTitleLink" data-type="{{item.type}}" data-sourceid="{{item.sourceId}}" bindtap="openCardDetail">
                   {{item.title}}

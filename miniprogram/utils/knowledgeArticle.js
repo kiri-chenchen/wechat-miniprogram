@@ -12,6 +12,8 @@ const KNOWLEDGE_COVER_FILE_MAP = {
   'culture-002': 'intangible-heritage.png',
   'culture-003': 'folk-custom.png',
   'culture-004': 'travel-tips.png',
+  'redtour-001': 'redtour-shenjialing-gongjian-cover.jpg',
+  'redtour-002': 'redtour-xuezhan-shenjialing-cover.jpg',
 }
 
 function normalizeText(value = '') {

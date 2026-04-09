@@ -22,7 +22,7 @@ const MAINLINE_SKILL_MODE_MAP = {
   xiaohe_feedback: MAINLINE.FEEDBACK,
 };
 
-const BUDDY_KEYWORDS = ["搭子", "同行", "一起去", "找人一起", "结伴", "拼玩", "拼车"];
+const BUDDY_KEYWORDS = ["搭子", "同行", "一起去", "找人一起", "结伴", "拼玩", "拼车", "一起玩", "一起旅游", "一起旅行"];
 const GUIDE_KEYWORDS = ["攻略", "路线", "行程", "怎么玩", "安排", "推荐路线", "定制", "规划"];
 const WEATHER_KEYWORDS = [
   "天气",
@@ -73,8 +73,28 @@ function uniqueList(list = []) {
   return Array.from(new Set((list || []).filter(Boolean)));
 }
 
+function maskIdentifier(value = "") {
+  const normalized = normalizeText(value);
+  if (!normalized) return "";
+  if (normalized.length <= 8) return normalized;
+  return `${normalized.slice(0, 4)}***${normalized.slice(-4)}`;
+}
+
 function includesAny(text = "", keywords = []) {
   return keywords.some((keyword) => text.includes(keyword));
+}
+
+function isBuddyIntentText(text = "") {
+  const normalized = normalizeText(text);
+  if (!normalized) return false;
+  if (includesAny(normalized, BUDDY_KEYWORDS)) return true;
+
+  return (
+    /(找|想找|帮我找).*(一起|结伴|同行)/u.test(normalized) ||
+    /(一起).*(找|想找|帮我找)/u.test(normalized) ||
+    /(找|想找|帮我找).*(女生|男生|小姐姐|小哥哥)/u.test(normalized) ||
+    /(女生|男生|小姐姐|小哥哥).*(一起|同行|结伴)/u.test(normalized)
+  );
 }
 
 function removeRegionSuffix(value) {
@@ -97,6 +117,15 @@ function buildRegionTokens(location = {}) {
   );
 }
 
+function buildExplicitRegionTokens(region = "") {
+  const normalizedRegion = normalizeText(region);
+  if (!normalizedRegion) return [];
+
+  return uniqueList(
+    [normalizedRegion, removeRegionSuffix(normalizedRegion)].filter(Boolean)
+  );
+}
+
 function buildRegionLabel(location = {}) {
   const displayName = normalizeText(location.displayName);
   if (displayName) {
@@ -111,8 +140,218 @@ function buildRegionLabel(location = {}) {
   return region || normalizeText(location.locationText) || DEFAULT_REGION_LABEL;
 }
 
+function getConversationHistory(contextPayload = {}) {
+  if (!Array.isArray(contextPayload?.history)) {
+    return [];
+  }
+
+  return contextPayload.history
+    .map((item) => ({
+      role: item?.role === "assistant" || item?.role === "ai" ? "assistant" : "user",
+      text: normalizeText(item?.text || item?.content || ""),
+    }))
+    .filter((item) => item.text)
+    .slice(-20);
+}
+
+function inferFieldFromAssistant(mainline = "", assistantText = "") {
+  const text = normalizeText(assistantText);
+  if (!text) return "";
+
+  if (mainline === MAINLINE.GUIDE) {
+    if (text.includes("最想去哪里")) return "destination";
+    if (text.includes("什么时候去")) return "time";
+    if (text.includes("几个人一起")) return "peopleCount";
+    if (text.includes("什么关系")) return "relationship";
+    if (text.includes("预算")) return "budget";
+  }
+
+  if (mainline === MAINLINE.BUDDY) {
+    if (text.includes("从哪里出发")) return "departure";
+    if (text.includes("最想去哪里")) return "destination";
+    if (text.includes("什么时候出发")) return "time";
+    if (text.includes("同行搭子")) return "companionPreference";
+  }
+
+  return "";
+}
+
+function inferMainlineFromHistory(contextPayload = {}) {
+  const history = getConversationHistory(contextPayload);
+  if (!history.length) return "";
+
+  const lastAssistantText =
+    [...history].reverse().find((item) => item.role === "assistant")?.text || "";
+  const combinedText = history.map((item) => item.text).join("\n");
+
+  if (
+    lastAssistantText.includes("最想去哪里") ||
+    lastAssistantText.includes("什么时候去") ||
+    lastAssistantText.includes("几个人一起") ||
+    lastAssistantText.includes("什么关系") ||
+    lastAssistantText.includes("预算")
+  ) {
+    return MAINLINE.GUIDE;
+  }
+
+  if (
+    lastAssistantText.includes("从哪里出发") ||
+    lastAssistantText.includes("什么时候出发") ||
+    lastAssistantText.includes("同行搭子")
+  ) {
+    return MAINLINE.BUDDY;
+  }
+
+  if (
+    lastAssistantText.includes("我会认真听") ||
+    lastAssistantText.includes("收到你的反馈") ||
+    lastAssistantText.includes("收到这条建议") ||
+    lastAssistantText.includes("最让你难受的点")
+  ) {
+    return MAINLINE.FEEDBACK;
+  }
+
+  if (includesAny(combinedText, GUIDE_KEYWORDS)) return MAINLINE.GUIDE;
+  if (isBuddyIntentText(combinedText)) return MAINLINE.BUDDY;
+  if (includesAny(combinedText, FEEDBACK_KEYWORDS)) return MAINLINE.FEEDBACK;
+  if (includesAny(combinedText, WEATHER_KEYWORDS)) return MAINLINE.WEATHER;
+
+  return "";
+}
+
+function inferTaskStateFromHistory(contextPayload = {}) {
+  const explicitState = contextPayload?.currentTaskState || {};
+  const mainline =
+    normalizeText(explicitState?.mainline) || inferMainlineFromHistory(contextPayload);
+
+  if (!mainline) {
+    return explicitState || {};
+  }
+
+  const history = getConversationHistory(contextPayload);
+  const inferredState = {
+    ...explicitState,
+    mainline,
+    collected: {
+      ...(explicitState?.collected || {}),
+    },
+    lastAskedField: normalizeText(explicitState?.lastAskedField),
+    feedbackType: normalizeText(explicitState?.feedbackType),
+  };
+
+  const userTexts = history
+    .filter((item) => item.role === "user")
+    .map((item) => item.text);
+
+  if (mainline === MAINLINE.GUIDE) {
+    const collected = { ...(inferredState.collected || {}) };
+    const historyInferenceContext = {
+      ...(contextPayload || {}),
+      disableHistoryInference: true,
+      currentTaskState: {
+        ...(explicitState || {}),
+        mainline,
+        collected,
+      },
+      skillContext: {
+        ...(contextPayload?.skillContext || {}),
+        collected: {
+          ...(contextPayload?.skillContext?.collected || {}),
+          ...collected,
+        },
+      },
+    };
+
+    userTexts.forEach((text) => {
+      historyInferenceContext.currentTaskState.collected = collected;
+      historyInferenceContext.skillContext.collected = {
+        ...(contextPayload?.skillContext?.collected || {}),
+        ...collected,
+      };
+
+      if (!collected.time) collected.time = extractTime(text, historyInferenceContext);
+      if (!collected.peopleCount) {
+        collected.peopleCount = extractCount(
+          text,
+          historyInferenceContext,
+          ["peopleCount"],
+          /([一二三四五六七八九十两\d]+(?:人|位))/u
+        );
+      }
+      if (!collected.relationship) {
+        collected.relationship = extractRelationship(text, historyInferenceContext);
+      }
+      if (!collected.peopleCount) {
+        collected.peopleCount = normalizePeopleCountFromRelationship(
+          collected.relationship,
+          collected.peopleCount
+        );
+      }
+      if (!collected.budget) collected.budget = extractGuideBudgetValue(text, historyInferenceContext);
+      if (!collected.destination) collected.destination = extractDestination(text, historyInferenceContext);
+    });
+    inferredState.collected = collected;
+  }
+
+  if (mainline === MAINLINE.BUDDY) {
+    const collected = { ...(inferredState.collected || {}) };
+    const historyInferenceContext = {
+      ...(contextPayload || {}),
+      disableHistoryInference: true,
+      currentTaskState: {
+        ...(explicitState || {}),
+        mainline,
+        collected,
+      },
+      skillContext: {
+        ...(contextPayload?.skillContext || {}),
+        collected: {
+          ...(contextPayload?.skillContext?.collected || {}),
+          ...collected,
+        },
+      },
+    };
+
+    userTexts.forEach((text) => {
+      historyInferenceContext.currentTaskState.collected = collected;
+      historyInferenceContext.skillContext.collected = {
+        ...(contextPayload?.skillContext?.collected || {}),
+        ...collected,
+      };
+
+      if (!collected.departure) {
+        const location = contextPayload?.location || {};
+        collected.departure = normalizeText(location.city || location.displayName);
+      }
+      if (!collected.destination) collected.destination = extractDestination(text, historyInferenceContext);
+      if (!collected.time) collected.time = extractTime(text, historyInferenceContext);
+      if (!collected.companionPreference) {
+        collected.companionPreference = extractCompanionPreference(text, historyInferenceContext);
+      }
+    });
+    inferredState.collected = collected;
+  }
+
+  if (mainline === MAINLINE.FEEDBACK && !inferredState.feedbackType) {
+    const latestUserText = [...userTexts].reverse().find(Boolean) || "";
+    inferredState.feedbackType = classifyFeedbackType(latestUserText);
+  }
+
+  if (!inferredState.lastAskedField) {
+    const lastAssistantText =
+      [...history].reverse().find((item) => item.role === "assistant")?.text || "";
+    inferredState.lastAskedField = inferFieldFromAssistant(mainline, lastAssistantText);
+  }
+
+  return inferredState;
+}
+
 function getCurrentTaskState(contextPayload = {}) {
-  return contextPayload?.currentTaskState || {};
+  if (contextPayload?.disableHistoryInference) {
+    return contextPayload?.currentTaskState || {};
+  }
+
+  return inferTaskStateFromHistory(contextPayload);
 }
 
 function getMergedCollected(contextPayload = {}) {
@@ -345,6 +584,13 @@ function formatCandidateLine(candidate, index) {
   return `${index + 1}. [${candidate.type}] ${candidate.title}（ID: ${candidate.id || "无"}；地区：${candidate.region}；价格：${candidate.priceText}${tags}${summary}）`;
 }
 
+function itemMatchesExplicitRegion(item = {}, regionTokens = []) {
+  if (!regionTokens.length) return true;
+
+  const text = joinSearchText(item);
+  return regionTokens.some((token) => text.includes(normalizeTextLower(token)));
+}
+
 function getCloudbaseApp() {
   if (cloudbaseApp) return cloudbaseApp;
 
@@ -375,6 +621,16 @@ async function fetchUserByOpenid(openid = "") {
   if (!normalizedOpenid) return null;
 
   const result = await fetchCollection("users", { openid: normalizedOpenid });
+  console.log("[agent-yuxiaohe] fetchUserByOpenid", {
+    requestedOpenid: maskIdentifier(normalizedOpenid),
+    matchedCount: result.length,
+    matchedByOpenid: result.some(
+      (item) => normalizeText(item?.openid) === normalizedOpenid
+    ),
+    matchedBy_Openid: result.some(
+      (item) => normalizeText(item?._openid) === normalizedOpenid
+    ),
+  });
   return result[0] || null;
 }
 
@@ -389,8 +645,15 @@ async function loadPlatformDataset() {
   return { activities, hotels, scenics, products };
 }
 
-function buildRankedCandidates({ question = "", location = {}, userProfile = {}, datasets = {} }) {
+function buildRankedCandidates({
+  question = "",
+  location = {},
+  userProfile = {},
+  datasets = {},
+  explicitRegion = "",
+}) {
   const regionTokens = buildRegionTokens(location);
+  const explicitRegionTokens = buildExplicitRegionTokens(explicitRegion);
   const requestedTypes = detectRequestedTypes(question);
   const intentTokens = buildIntentTokens(question, userProfile);
 
@@ -415,7 +678,11 @@ function buildRankedCandidates({ question = "", location = {}, userProfile = {},
     })
     .filter((item) => item.score > 0);
 
-  const sorted = sortByScore(candidates);
+  const regionConstrainedCandidates = explicitRegionTokens.length
+    ? candidates.filter((item) => itemMatchesExplicitRegion(item.raw, explicitRegionTokens))
+    : candidates;
+
+  const sorted = sortByScore(regionConstrainedCandidates);
   const grouped = { activity: [], scenic: [], hotel: [], product: [] };
 
   sorted.forEach((candidate) => {
@@ -435,7 +702,7 @@ function buildRankedCandidates({ question = "", location = {}, userProfile = {},
   return {
     requestedTypes,
     intentTokens,
-    regionLabel: buildRegionLabel(location),
+    regionLabel: explicitRegion || buildRegionLabel(location),
     selected,
   };
 }
@@ -455,7 +722,14 @@ export async function buildPlatformGroundingContext(payload = {}) {
   const userProfile = payload.userProfile || {};
   const preferences = payload.preferences || {};
   const datasets = payload.platformDataset || (await loadPlatformDataset());
-  const ranked = buildRankedCandidates({ question, location, userProfile, datasets });
+  const explicitRegion = readStateValue(payload, ["destination", "region", "place"]);
+  const ranked = buildRankedCandidates({
+    question,
+    location,
+    userProfile,
+    datasets,
+    explicitRegion,
+  });
 
   const preferenceText = [
     preferences.distance ? `距离偏好：${preferences.distance}` : "",
@@ -496,6 +770,11 @@ export function detectMainline(question = "", contextPayload = {}) {
     return currentTaskMainline;
   }
 
+  const inferredMainline = inferMainlineFromHistory(contextPayload);
+  if (inferredMainline) {
+    return inferredMainline;
+  }
+
   const skillMode = normalizeText(contextPayload?.skillContext?.mode);
   if (skillMode && MAINLINE_SKILL_MODE_MAP[skillMode]) {
     return MAINLINE_SKILL_MODE_MAP[skillMode];
@@ -504,7 +783,7 @@ export function detectMainline(question = "", contextPayload = {}) {
   const text = normalizeText(question);
   if (!text) return MAINLINE.GENERIC;
   if (includesAny(text, WEATHER_KEYWORDS)) return MAINLINE.WEATHER;
-  if (includesAny(text, BUDDY_KEYWORDS)) return MAINLINE.BUDDY;
+  if (isBuddyIntentText(text)) return MAINLINE.BUDDY;
   if (includesAny(text, GUIDE_KEYWORDS)) return MAINLINE.GUIDE;
   if (includesAny(text, FEEDBACK_KEYWORDS)) return MAINLINE.FEEDBACK;
   return MAINLINE.GENERIC;
@@ -514,32 +793,82 @@ function extractDestination(question = "", contextPayload = {}) {
   const fromCollected = readStateValue(contextPayload, ["destination", "region", "place"]);
   if (fromCollected) return fromCollected;
 
+  const normalizedQuestion = normalizeText(question);
   const patterns = [
-    /去([\u4e00-\u9fa5A-Za-z0-9]{2,12})/u,
-    /到([\u4e00-\u9fa5A-Za-z0-9]{2,12})/u,
-    /在([\u4e00-\u9fa5A-Za-z0-9]{2,12})(?:玩|逛|旅游|旅行)/u,
+    /去([\u4e00-\u9fa5A-Za-z0-9]{2,12}?)(?:玩|逛|旅游|旅行|看|参加|的|，|。|\s|$)/u,
+    /到([\u4e00-\u9fa5A-Za-z0-9]{2,12}?)(?:玩|逛|旅游|旅行|看|参加|的|，|。|\s|$)/u,
+    /在([\u4e00-\u9fa5A-Za-z0-9]{2,12}?)(?:玩|逛|旅游|旅行)/u,
   ];
 
   for (const pattern of patterns) {
-    const matched = normalizeText(question).match(pattern);
+    const matched = normalizedQuestion.match(pattern);
     if (matched?.[1]) return matched[1];
   }
+
+  if (
+    /^[\u4e00-\u9fa5A-Za-z0-9]{2,12}$/u.test(normalizedQuestion) &&
+    !extractTime(normalizedQuestion, contextPayload) &&
+    !extractGuideBudgetValue(normalizedQuestion, contextPayload) &&
+    !extractCount(normalizedQuestion, contextPayload, ["peopleCount"], /([一二三四五六七八九十两\d]+(?:人|位))/u)
+  ) {
+    return normalizedQuestion;
+  }
+
   return "";
 }
 
-function extractBudget(question = "", contextPayload = {}) {
+function extractGuideBudgetValue(question = "", contextPayload = {}) {
   const fromCollected = readStateValue(contextPayload, ["budget"]);
   if (fromCollected) return fromCollected;
 
-  const matched = normalizeText(question).match(/(\d{2,5}\s*(?:元|块|w|万))/u);
-  return matched?.[1] || "";
+  const normalizedQuestion = normalizeText(question);
+  const amountWithUnit = normalizedQuestion.match(/(\d{2,5}\s*(?:元|块|w|万))/u);
+  if (amountWithUnit?.[1]) return amountWithUnit[1];
+
+  const embeddedBudget = normalizedQuestion.match(
+    /(?:预算|人均|花费|费用|开销)(?:大概|大约|差不多|控制在)?\s*(\d{2,5})(?:\s*(?:元|块))?(?:左右|以内|以下|上下|上下浮动)?/u
+  );
+  if (embeddedBudget?.[1]) {
+    return `${embeddedBudget[1]}元`;
+  }
+
+  const standaloneBudget = normalizedQuestion.match(
+    /^(?:预算)?\s*(\d{2,5})(?:\s*(?:元|块))?(?:左右|以内|以下|上下|以左|以上)?$/u
+  );
+  if (standaloneBudget?.[1]) {
+    return `${standaloneBudget[1]}元`;
+  }
+
+  const currentTaskState = getCurrentTaskState(contextPayload);
+  if (normalizeText(currentTaskState?.lastAskedField) === "budget") {
+    const plainNumber = normalizedQuestion.match(/^(\d{2,5})(?:左右|以内|以下|上下)?$/u);
+    if (plainNumber?.[1]) {
+      return `${plainNumber[1]}元`;
+    }
+  }
+
+  return "";
 }
 
 function extractCount(question = "", contextPayload = {}, keys = [], pattern) {
   const fromCollected = readStateValue(contextPayload, keys);
   if (fromCollected) return fromCollected;
-  const matched = normalizeText(question).match(pattern);
-  return matched?.[1] || "";
+  const normalizedQuestion = normalizeText(question);
+  const matched = normalizedQuestion.match(pattern);
+  if (matched?.[1]) return matched[1];
+
+  const extendedMatched = normalizedQuestion.match(/([一二三四五六七八九十两\d]+)\s*个?人/u);
+  if (extendedMatched?.[1]) {
+    return `${extendedMatched[1]}人`;
+  }
+
+  if (/^(我俩|我们)$/u.test(normalizedQuestion)) return "2人";
+  if (/^(两个人|两人|2个人|2人|我们两个人|我们两人)$/u.test(normalizedQuestion)) return "2人";
+  if (/^我和(?:男朋友|女朋友|对象|恋人|爱人|老公|老婆|朋友|同学|同事)/u.test(normalizedQuestion)) {
+    return "2人";
+  }
+
+  return "";
 }
 
 function extractTime(question = "", contextPayload = {}) {
@@ -556,15 +885,44 @@ function extractCompanionPreference(question = "", contextPayload = {}) {
   const fromCollected = readStateValue(contextPayload, ["companionPreference", "groupPreference", "buddyPreference"]);
   if (fromCollected) return fromCollected;
 
-  const patterns = [
+  const normalizedQuestion = normalizeText(question);
+  const directPatterns = [
     /(女生搭子|男生搭子|情侣搭子|亲子搭子|摄影搭子|饭搭子|自由行搭子)/u,
-    /(同龄人|大学生|本地人|会开车|能拼车|随和一点|话少一点|会拍照)/u,
+    /(同龄人|大学生|本地人|会开车|能拼车|随和一点|话少一点|会拍照|会摄影)/u,
   ];
 
-  for (const pattern of patterns) {
-    const matched = normalizeText(question).match(pattern);
+  for (const pattern of directPatterns) {
+    const matched = normalizedQuestion.match(pattern);
     if (matched?.[1]) return matched[1];
   }
+
+  const normalizedGender =
+    /(女生|小姐姐)/u.test(normalizedQuestion) ? "女生" : /(男生|小哥哥)/u.test(normalizedQuestion) ? "男生" : "";
+  const normalizedTrait =
+    /(会摄影|会拍照|摄影)/u.test(normalizedQuestion)
+      ? "会摄影"
+      : /(会开车|能开车)/u.test(normalizedQuestion)
+        ? "会开车"
+        : /能拼车/u.test(normalizedQuestion)
+          ? "能拼车"
+          : /同龄人/u.test(normalizedQuestion)
+            ? "同龄人"
+            : /大学生/u.test(normalizedQuestion)
+              ? "大学生"
+              : /本地人/u.test(normalizedQuestion)
+                ? "本地人"
+                : /随和/u.test(normalizedQuestion)
+                  ? "随和一点"
+                  : /话少/u.test(normalizedQuestion)
+                    ? "话少一点"
+                    : "";
+
+  if (normalizedTrait && normalizedGender) {
+    return `${normalizedTrait}的${normalizedGender}`;
+  }
+
+  if (normalizedTrait) return normalizedTrait;
+  if (normalizedGender) return normalizedGender;
   return "";
 }
 
@@ -572,17 +930,39 @@ function extractRelationship(question = "", contextPayload = {}) {
   const fromCollected = readStateValue(contextPayload, ["relationship", "groupType"]);
   if (fromCollected) return fromCollected;
 
-  const matched = normalizeText(question).match(/(情侣|夫妻|亲子|朋友|闺蜜|同学|同事|家人|一个人|独自)/u);
-  return matched?.[1] || "";
+  const normalizedQuestion = normalizeText(question);
+  const matched = normalizedQuestion.match(
+    /(情侣|夫妻|亲子|朋友|闺蜜|同学|同事|家人|一个人|独自|男朋友|女朋友|对象|恋人|爱人)/u
+  );
+  if (!matched?.[1]) return "";
+
+  if (/(男朋友|女朋友|对象|恋人|爱人)/u.test(matched[1])) {
+    return "情侣";
+  }
+
+  return matched[1];
 }
 
 function classifyFeedbackType(question = "") {
   const text = normalizeText(question);
-  if (!text) return "产品反馈";
+  if (!text) return "普通反馈";
   if (/(建议|希望|能不能|可不可以|改进)/u.test(text)) return "平台建议";
-  if (/(难用|卡|bug|闪退|进不去|加载慢|失败)/u.test(text)) return "产品反馈";
+  if (/(难用|卡|bug|闪退|进不去|加载慢|失败)/u.test(text)) return "普通反馈";
   if (/(烦|难受|委屈|伤心|emo|崩溃|累)/u.test(text)) return "情绪倾诉";
-  return "体验抱怨";
+  return "普通反馈";
+}
+
+function normalizePeopleCountFromRelationship(relationship = "", currentPeopleCount = "") {
+  if (normalizeText(currentPeopleCount)) {
+    return normalizeText(currentPeopleCount);
+  }
+
+  const normalizedRelationship = normalizeText(relationship);
+  if (normalizedRelationship === "情侣" || normalizedRelationship === "夫妻") {
+    return "2人";
+  }
+
+  return "";
 }
 
 function buildBuddyWorkflow(question = "", contextPayload = {}) {
@@ -611,13 +991,15 @@ function buildBuddyWorkflow(question = "", contextPayload = {}) {
 }
 
 function buildGuideWorkflow(question = "", contextPayload = {}) {
+  const relationship = extractRelationship(question, contextPayload);
   const fields = {
     time: extractTime(question, contextPayload),
     peopleCount: extractCount(question, contextPayload, ["peopleCount"], /([一二三四五六七八九十两\d]+(?:人|位))/u),
-    relationship: extractRelationship(question, contextPayload),
-    budget: extractBudget(question, contextPayload),
+    relationship,
+    budget: extractGuideBudgetValue(question, contextPayload),
     destination: extractDestination(question, contextPayload),
   };
+  fields.peopleCount = normalizePeopleCountFromRelationship(relationship, fields.peopleCount);
 
   const fieldDefs = [
     { key: "destination", label: "目的地", ask: "你这次最想去哪里？" },
@@ -679,12 +1061,57 @@ function buildBuddyCandidateCard(currentUser = {}, candidate = {}, fields = {}) 
 
 async function buildBuddyCandidates(contextPayload = {}, cloudbaseUserId = "", workflow = {}) {
   const currentUser = await fetchUserByOpenid(cloudbaseUserId);
-  if (!currentUser) return [];
+  if (!currentUser) {
+    const users = await fetchCollection("users");
+    console.warn("[agent-yuxiaohe] buildBuddyCandidates current user missing", {
+      cloudbaseUserId: maskIdentifier(cloudbaseUserId),
+      totalUsers: users.length,
+      usersWithOpenid: users.filter((item) => normalizeText(item?.openid)).length,
+      usersWith_Openid: users.filter((item) => normalizeText(item?._openid)).length,
+      usersWithMatchingOpenid: users.filter(
+        (item) => normalizeText(item?.openid) === normalizeText(cloudbaseUserId)
+      ).length,
+      usersWithMatching_Openid: users.filter(
+        (item) => normalizeText(item?._openid) === normalizeText(cloudbaseUserId)
+      ).length,
+    });
+    return [];
+  }
 
   const users = await fetchCollection("users");
-  return users
-    .filter((item) => item?.openid && item.openid !== cloudbaseUserId)
-    .filter((item) => item.profileCompleted && item.dnaCompleted)
+  const normalizedCloudbaseUserId = normalizeText(cloudbaseUserId);
+  const withOpenid = users.filter((item) => normalizeText(item?.openid));
+  const excludingSelf = withOpenid.filter(
+    (item) => normalizeText(item?.openid) !== normalizedCloudbaseUserId
+  );
+  const profileCompletedUsers = excludingSelf.filter((item) => item?.profileCompleted);
+  const dnaCompletedUsers = profileCompletedUsers.filter((item) => item?.dnaCompleted);
+
+  console.log("[agent-yuxiaohe] buildBuddyCandidates stats", {
+    cloudbaseUserId: maskIdentifier(normalizedCloudbaseUserId),
+    currentUserFound: true,
+    currentUserOpenid: maskIdentifier(currentUser?.openid || currentUser?._openid || ""),
+    currentUserProfileCompleted: Boolean(currentUser?.profileCompleted),
+    currentUserDnaCompleted: Boolean(currentUser?.dnaCompleted),
+    workflowFields: {
+      departure: normalizeText(workflow?.fields?.departure),
+      destination: normalizeText(workflow?.fields?.destination),
+      time: normalizeText(workflow?.fields?.time),
+      companionPreference: normalizeText(workflow?.fields?.companionPreference),
+    },
+    totalUsers: users.length,
+    usersWithOpenid: withOpenid.length,
+    usersWith_Openid: users.filter((item) => normalizeText(item?._openid)).length,
+    excludingSelf: excludingSelf.length,
+    profileCompleted: profileCompletedUsers.length,
+    dnaCompleted: dnaCompletedUsers.length,
+    finalCandidatePool: dnaCompletedUsers.length,
+    sampleCandidateOpenids: dnaCompletedUsers
+      .slice(0, 5)
+      .map((item) => maskIdentifier(item?.openid || item?._openid || "")),
+  });
+
+  return dnaCompletedUsers
     .map((item) => buildBuddyCandidateCard(currentUser, item, workflow.fields || {}))
     .sort((left, right) => right.score - left.score)
     .slice(0, BUDDY_MAX_CANDIDATES);
@@ -736,6 +1163,36 @@ export async function buildConversationWorkflow({
   };
 }
 
+export async function buildUnifiedTaskState({
+  question = "",
+  contextPayload = {},
+  cloudbaseUserId = "",
+} = {}) {
+  const workflow = await buildConversationWorkflow({
+    question,
+    contextPayload,
+    cloudbaseUserId,
+  });
+  const currentTaskState = getCurrentTaskState(contextPayload);
+
+  return {
+    mainline: normalizeText(workflow?.mainline || currentTaskState?.mainline),
+    collected: workflow?.fields || currentTaskState?.collected || {},
+    missingField: workflow?.missingField
+      ? {
+          key: normalizeText(workflow.missingField.key),
+          label: normalizeText(workflow.missingField.label),
+          ask: normalizeText(workflow.missingField.ask),
+        }
+      : null,
+    lastAskedField: normalizeText(
+      workflow?.missingField?.key || workflow?.lastAskedField || currentTaskState?.lastAskedField
+    ),
+    feedbackType: normalizeText(workflow?.feedbackType || currentTaskState?.feedbackType),
+    isReady: Boolean(workflow?.isReady),
+  };
+}
+
 export async function buildBuddyMatchResult({
   departure = "",
   destination = "",
@@ -777,20 +1234,11 @@ export async function buildBuddyMatchResult({
         }
       : null,
     collected: workflow?.fields || {},
-    candidates: Array.isArray(workflow?.buddyCandidates)
-      ? workflow.buddyCandidates.map((item) => ({
-          id: normalizeText(item.id),
-          nickname: normalizeText(item.title),
-          region: normalizeText(item.region),
-          summary: normalizeText(item.summary),
-          tags: normalizeArray(item.tags),
-          matchReason: normalizeText(item.matchReason),
-        }))
-      : [],
+    candidates: normalizeBuddyCandidates(workflow?.buddyCandidates),
   };
 }
 
-function buildGuideRecallQuestion(fields = {}) {
+export function buildGuideRecallQuestion(fields = {}) {
   const segments = [
     normalizeText(fields.destination),
     normalizeText(fields.time),
@@ -806,8 +1254,42 @@ function buildGuideRecallQuestion(fields = {}) {
   return segments.join(" ");
 }
 
+export function buildGuideGroundingPayload({
+  question = "",
+  contextPayload = {},
+  guideFields = {},
+} = {}) {
+  const normalizedFields =
+    guideFields && typeof guideFields === "object" ? guideFields : {};
+
+  return {
+    ...(contextPayload || {}),
+    question: buildGuideRecallQuestion(normalizedFields) || normalizeText(question),
+    location: contextPayload?.location || {},
+    userProfile: contextPayload?.userProfile || {},
+    preferences: contextPayload?.preferences || {},
+    skillContext: {
+      ...(contextPayload?.skillContext || {}),
+      mode: MAINLINE.GUIDE,
+      title: normalizeText(contextPayload?.skillContext?.title) || "攻略定制",
+      collected: {
+        ...(contextPayload?.skillContext?.collected || {}),
+        ...normalizedFields,
+      },
+    },
+    currentTaskState: {
+      ...(contextPayload?.currentTaskState || {}),
+      mainline: MAINLINE.GUIDE,
+      collected: {
+        ...(contextPayload?.currentTaskState?.collected || {}),
+        ...normalizedFields,
+      },
+    },
+  };
+}
+
 function normalizeGuideCandidates(candidates = []) {
-  return (Array.isArray(candidates) ? candidates : [])
+  const normalized = (Array.isArray(candidates) ? candidates : [])
     .filter((item) => normalizeText(item.type) !== "product")
     .slice(0, GUIDE_MAX_CANDIDATES)
     .map((item) => ({
@@ -819,6 +1301,25 @@ function normalizeGuideCandidates(candidates = []) {
       summary: normalizeText(item.summary),
       tags: normalizeArray(item.tags),
     }));
+
+  console.log("[agent-yuxiaohe] normalizeGuideCandidates", {
+    inputCount: Array.isArray(candidates) ? candidates.length : 0,
+    outputCount: normalized.length,
+    output: normalized,
+  });
+
+  return normalized;
+}
+
+function normalizeBuddyCandidates(candidates = []) {
+  return (Array.isArray(candidates) ? candidates : []).map((item) => ({
+    id: normalizeText(item.id),
+    nickname: normalizeText(item.title),
+    region: normalizeText(item.region),
+    summary: normalizeText(item.summary),
+    tags: normalizeArray(item.tags),
+    matchReason: normalizeText(item.matchReason),
+  }));
 }
 
 export async function buildGuideCustomizationResult({
@@ -868,21 +1369,13 @@ export async function buildGuideCustomizationResult({
     };
   }
 
-  const groundingContext = await buildPlatformGroundingContext({
-    question: buildGuideRecallQuestion(workflow.fields || {}),
-    location: mergedContextPayload?.location || {},
-    userProfile: mergedContextPayload?.userProfile || {},
-    preferences: mergedContextPayload?.preferences || {},
-    skillContext: {
-      mode: MAINLINE.GUIDE,
-      title: "攻略定制",
-      collected: workflow.fields || {},
-    },
-    currentTaskState: {
-      mainline: MAINLINE.GUIDE,
-      collected: workflow.fields || {},
-    },
-  });
+  const groundingContext = await buildPlatformGroundingContext(
+    buildGuideGroundingPayload({
+      question: buildGuideRecallQuestion(workflow.fields || {}),
+      contextPayload: mergedContextPayload,
+      guideFields: workflow.fields || {},
+    })
+  );
 
   return {
     success: true,
@@ -891,6 +1384,70 @@ export async function buildGuideCustomizationResult({
     missingField: null,
     collected: workflow?.fields || {},
     candidates: normalizeGuideCandidates(groundingContext?.candidates || []),
+  };
+}
+
+export async function buildConversationStateResult({
+  question = "",
+  contextPayload = {},
+  cloudbaseUserId = "",
+} = {}) {
+  const workflow = await buildConversationWorkflow({
+    question,
+    contextPayload,
+    cloudbaseUserId,
+  });
+  const unifiedTaskState = await buildUnifiedTaskState({
+    question,
+    contextPayload,
+    cloudbaseUserId,
+  });
+
+  let candidates = [];
+
+  if (
+    normalizeText(unifiedTaskState?.mainline) === MAINLINE.GUIDE &&
+    Boolean(unifiedTaskState?.isReady)
+  ) {
+    const guideFields = workflow?.fields || unifiedTaskState?.collected || {};
+    console.log("[agent-yuxiaohe] conversation-state guide fields", {
+      question: normalizeText(question),
+      guideFields,
+    });
+    const groundingContext = await buildPlatformGroundingContext(
+      buildGuideGroundingPayload({
+        question,
+        contextPayload,
+        guideFields,
+      })
+    );
+
+    console.log("[agent-yuxiaohe] conversation-state guide grounding", {
+      candidateCount: Array.isArray(groundingContext?.candidates)
+        ? groundingContext.candidates.length
+        : 0,
+      candidates: groundingContext?.candidates || [],
+    });
+
+    candidates = normalizeGuideCandidates(groundingContext?.candidates || []);
+  }
+
+  if (
+    normalizeText(unifiedTaskState?.mainline) === MAINLINE.BUDDY &&
+    Boolean(unifiedTaskState?.isReady)
+  ) {
+    candidates = normalizeBuddyCandidates(workflow?.buddyCandidates);
+  }
+
+  return {
+    success: true,
+    mainline: normalizeText(unifiedTaskState?.mainline),
+    collected: unifiedTaskState?.collected || {},
+    missingField: unifiedTaskState?.missingField || null,
+    lastAskedField: normalizeText(unifiedTaskState?.lastAskedField),
+    feedbackType: normalizeText(unifiedTaskState?.feedbackType),
+    isReady: Boolean(unifiedTaskState?.isReady),
+    candidates,
   };
 }
 
@@ -951,7 +1508,7 @@ export function buildAgentUserPrompt({
         : mainline === MAINLINE.FEEDBACK
           ? [
               "当前主线：树洞反馈。",
-              `当前反馈分类：${workflowContext?.feedbackType || "产品反馈"}。`,
+              `当前反馈分类：${workflowContext?.feedbackType || "普通反馈"}。`,
               "以接住情绪、接收意见为主。",
               "不导购、不推荐、不跳业务主线，只在必要时温和追问。",
             ].join("\n")
@@ -979,6 +1536,9 @@ export function buildAgentUserPrompt({
     profileTags ? `用户画像标签：${profileTags}` : "",
     preferencePairs.length ? `用户偏好：${preferencePairs.join("；")}` : "",
     shouldAttachPlatformGrounding ? groundingContext?.prompt || "" : "",
+    mainline === MAINLINE.GUIDE && workflowContext?.isReady
+      ? "攻略主线在信息齐全时，正文只允许输出简短承接、轻量解释和温馨提示，不允许用 1. 2. 3. 枚举推荐项，不允许重复复述具体候选标题、摘要和明细；具体推荐内容由前端结构化卡片展示。"
+      : "",
     "请直接开始回答用户。",
   ];
 

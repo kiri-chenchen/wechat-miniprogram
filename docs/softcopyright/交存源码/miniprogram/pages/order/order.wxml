@@ -1,0 +1,181 @@
+<view class="container">
+
+<!-- 出行信息 -->
+<view class="card">
+  <view class="title">出行信息</view>
+
+  <view class="row">
+    <text>出行日期</text>
+    <text>{{travelDate}}</text>
+  </view>
+
+  <view class="row">
+    <text>成人</text>
+    <text>{{adultCount}} 人</text>
+  </view>
+
+  <view class="row">
+    <text>儿童</text>
+    <text>{{childCount}} 人</text>
+  </view>
+
+</view>
+
+
+<!-- 联系人 -->
+<view class="card">
+
+  <view class="title">联系人</view>
+
+  <view class="inputRow">
+    <text class="label">*姓名</text>
+    <input
+      class="input"
+      placeholder="请输入姓名"
+      value="{{contactName}}"
+      bindinput="onNameInput"
+    />
+  </view>
+
+  <view class="inputRow">
+    <text class="label">*手机号</text>
+    <input
+      class="input"
+      type="number"
+      placeholder="请输入手机号"
+      value="{{contactPhone}}"
+      bindinput="onPhoneInput"
+    />
+  </view>
+
+  <view class="inputRow">
+    <text class="label">QQ号</text>
+    <input
+      class="input"
+      placeholder="选填"
+      value="{{contactQQ}}"
+      bindinput="onQQInput"
+    />
+  </view>
+
+  <view class="inputRow">
+    <text class="label">微信号</text>
+    <input
+      class="input"
+      placeholder="选填"
+      value="{{contactWechat}}"
+      bindinput="onWechatInput"
+    />
+  </view>
+
+</view>
+
+
+<!-- 出行人 -->
+<view class="card">
+
+  <view class="titleRow">
+    <text class="title">出行人</text>
+
+    <button
+      class="chooseBtn"
+      size="mini"
+      bindtap="goSelectTravelers">
+      选择出行人
+    </button>
+  </view>
+
+  <view class="tip">
+    请务必保证所填项与出游所持证件一致
+  </view>
+
+
+  <view wx:if="{{travelers.length==0}}" class="empty">
+    暂未选择出行人
+  </view>
+
+
+  <view wx:for="{{travelers}}" wx:key="_id" class="travelerRow">
+
+    <text>出行人{{index+1}}</text>
+
+    <view class="travelerInfo">
+      <text>{{item.name}}</text>
+      <text class="idno">{{item.idNo}}</text>
+    </view>
+
+  </view>
+
+</view>
+
+
+<!-- 特殊要求 -->
+<view class="card">
+
+  <view class="title">特殊要求</view>
+
+  <textarea
+    class="textarea"
+    placeholder="选填"
+    value="{{specialRequest}}"
+    bindinput="onSpecialInput"
+  />
+
+</view>
+
+
+<!-- 紧急联系人 -->
+<view class="card">
+
+  <view class="row">
+
+    <text>添加紧急联系人</text>
+
+    <switch
+      checked="{{emergencyEnabled}}"
+      bindchange="toggleEmergency"
+    />
+
+  </view>
+
+
+  <view wx:if="{{emergencyEnabled}}">
+
+    <view class="inputRow">
+      <text class="label">姓名</text>
+      <input
+        class="input"
+        placeholder="请输入姓名"
+        value="{{emergencyName}}"
+        bindinput="onEmergencyName"
+      />
+    </view>
+
+    <view class="inputRow">
+      <text class="label">手机号</text>
+      <input
+        class="input"
+        type="number"
+        placeholder="请输入手机号"
+        value="{{emergencyPhone}}"
+        bindinput="onEmergencyPhone"
+      />
+    </view>
+
+  </view>
+
+</view>
+
+
+<!-- 提交按钮 -->
+<view class="bottom">
+
+  <button
+    class="submit"
+    bindtap="submitOrder">
+    提交订单
+  </button>
+
+</view>
+
+</view>

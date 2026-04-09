@@ -100,6 +100,7 @@
             wx:key="id"
             class="themeActivityCard"
             data-id="{{item.id}}"
+            data-type="{{item.type || 'activity'}}"
             bindtap="goActivityDetail"
           >
             <view class="themeActivityCoverWrap">

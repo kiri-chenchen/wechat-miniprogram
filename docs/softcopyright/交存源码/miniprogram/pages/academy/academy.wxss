@@ -1,0 +1,281 @@
+.page {
+  min-height: 100vh;
+  background: #f5f6f7;
+}
+
+.hero {
+  position: relative;
+  height: 390rpx;
+  overflow: hidden;
+}
+
+.hero-bg {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-placeholder {
+  background: linear-gradient(135deg, #8aa96d 0%, #5f7b4d 100%);
+}
+
+.hero-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(14, 27, 18, 0.12) 0%, rgba(10, 25, 16, 0.38) 100%);
+}
+
+.hero-content {
+  position: absolute;
+  left: 28rpx;
+  right: 28rpx;
+  bottom: 38rpx;
+  color: #fff;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 46rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  background: rgba(124, 173, 98, 0.96);
+  font-size: 24rpx;
+  margin-bottom: 18rpx;
+}
+
+.hero-title {
+  font-size: 52rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  opacity: 0.98;
+}
+
+.hero-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  opacity: 0.94;
+}
+
+.sheet {
+  margin: -26rpx 24rpx 0;
+  padding: 28rpx 22rpx 48rpx;
+  background: #fff;
+  border-radius: 34rpx 34rpx 0 0;
+  box-shadow: 0 -8rpx 26rpx rgba(18, 24, 29, 0.04);
+}
+
+.tab-row {
+  display: flex;
+  gap: 18rpx;
+}
+
+.tab {
+  min-width: 180rpx;
+  height: 76rpx;
+  padding: 0 24rpx;
+  border-radius: 20rpx;
+  background: #f1f2f3;
+  color: #6b6f72;
+  font-size: 32rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab.active {
+  background: linear-gradient(135deg, #8aa96d 0%, #6d8a57 100%);
+  color: #fff;
+}
+
+.category-scroll {
+  margin-top: 22rpx;
+  white-space: nowrap;
+}
+
+.category-list {
+  display: inline-flex;
+  gap: 14rpx;
+  padding-bottom: 8rpx;
+}
+
+.category-chip {
+  padding: 12rpx 22rpx;
+  border-radius: 999rpx;
+  background: #f2f3f5;
+  color: #8b8f94;
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.category-chip.selected {
+  background: #eaf3e4;
+  color: #5e7b4c;
+  font-weight: 600;
+}
+
+.feed-head {
+  margin: 28rpx 2rpx 18rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.feed-title {
+  color: #1f1f1f;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.feed-subtitle {
+  margin-top: 8rpx;
+  color: #8d8d8d;
+  font-size: 22rpx;
+}
+
+.feed-count {
+  color: #8e8e8e;
+  font-size: 24rpx;
+}
+
+.loading-box,
+.empty-box {
+  padding: 100rpx 0;
+  text-align: center;
+  color: #8d8d8d;
+  font-size: 26rpx;
+}
+
+.empty-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1f1f1f;
+}
+
+.empty-text {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #8d8d8d;
+}
+
+.news-card {
+  padding: 24rpx;
+  border-radius: 28rpx;
+  background: #fafafa;
+  margin-bottom: 22rpx;
+  box-shadow: 0 8rpx 24rpx rgba(31, 35, 41, 0.05);
+}
+
+.news-main {
+  display: flex;
+  align-items: flex-start;
+}
+
+.news-left {
+  flex: 1;
+  min-width: 0;
+  padding-right: 22rpx;
+}
+
+.news-right {
+  position: relative;
+  width: 210rpx;
+  flex-shrink: 0;
+}
+
+.news-title {
+  color: #1e1e1f;
+  font-size: 32rpx;
+  line-height: 1.36;
+  font-weight: 700;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-author,
+.news-time,
+.news-wordcount {
+  color: #8d8d8d;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.news-author {
+  margin-top: 10rpx;
+}
+
+.news-time {
+  margin-top: 4rpx;
+}
+
+.news-tag-row {
+  margin-top: 12rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.news-tag {
+  height: 40rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: #edf4e8;
+  color: #5d7d4d;
+  font-size: 22rpx;
+  line-height: 40rpx;
+}
+
+.news-meta-row {
+  margin-top: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.news-meta-row .news-wordcount {
+  margin-top: 0;
+}
+
+.cover {
+  width: 210rpx;
+  height: 162rpx;
+  border-radius: 22rpx;
+  background: #e9edf1;
+}
+
+.cover-views {
+  position: absolute;
+  right: 10rpx;
+  bottom: 10rpx;
+  min-width: 72rpx;
+  height: 34rpx;
+  padding: 0 12rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 20rpx;
+  line-height: 34rpx;
+  text-align: center;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-shrink: 0;
+}
+
+.stat-item {
+  color: #7e7e7e;
+  font-size: 22rpx;
+}

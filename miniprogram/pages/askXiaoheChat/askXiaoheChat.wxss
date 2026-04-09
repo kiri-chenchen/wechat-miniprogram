@@ -291,6 +291,9 @@
 
 .buddyApplyBtn {
   margin-top: 20rpx;
+  margin-left: auto;
+  margin-right: auto;
+  width: 60%;
   height: 78rpx;
   border-radius: 22rpx;
   background: linear-gradient(90deg, #7da6ff 0%, #b46cff 100%);

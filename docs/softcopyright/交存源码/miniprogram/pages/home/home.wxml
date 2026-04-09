@@ -1,0 +1,156 @@
+<view class="page">
+  <view class="customNav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="navCapsuleRow">
+      <view class="locationInfo" catchtap="goRegion">
+        <view class="locationIcon"></view>
+        <text class="locationText">{{regionName}}</text>
+        <text class="locationArrow">▼</text>
+      </view>
+
+      <view class="capsuleSpacer" wx:if="{{menuRect}}"></view>
+    </view>
+
+    <view class="searchRow">
+      <view class="searchBox">
+        <view class="searchInputArea" bindtap="goSearch">
+          <text class="searchInputText">{{currentSearchHint}}</text>
+        </view>
+        <view class="searchAction" catchtap="executeSearch">搜索</view>
+      </view>
+
+      <view class="scanAction" bindtap="onScanTap">
+        <view class="scanIcon"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="nav">
+    <view
+      wx:for="{{navItems}}"
+      wx:key="key"
+      class="navItem"
+      data-action="{{item.action}}"
+      bindtap="onNavTap"
+    >
+      <image class="navIconImg" src="{{item.icon}}" mode="aspectFit"></image>
+      <view class="navText">{{item.title}}</view>
+    </view>
+  </view>
+
+  <view class="bannerWrap" wx:if="{{bannerList.length > 0}}">
+    <swiper
+      class="bannerSwiper"
+      indicator-dots="{{true}}"
+      indicator-color="rgba(255,255,255,0.45)"
+      indicator-active-color="#ffffff"
+      autoplay="{{true}}"
+      interval="3000"
+      duration="500"
+      circular="{{true}}"
+    >
+      <swiper-item wx:for="{{bannerList}}" wx:key="_id">
+        <view class="bannerItem" data-type="{{item.type}}" data-id="{{item.targetId}}" bindtap="goBannerTarget">
+          <image src="{{item.image}}" mode="aspectFill" class="bannerImg" />
+        </view>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <view class="bannerWrap" wx:else>
+    <view class="bannerItem">
+      <image src="/images/activities/lz-yuzhong-strawberry-family-day.jpg" mode="aspectFill" class="bannerImg" />
+    </view>
+  </view>
+
+  <view class="themeSection">
+    <view class="sectionHead">
+      <view class="hotTitle">
+        <text class="line"></text>
+        <text class="titleText">主题限定</text>
+      </view>
+    </view>
+
+    <scroll-view class="themeTabsScroll" scroll-x="{{true}}" enable-flex="{{true}}" show-scrollbar="{{false}}">
+      <view class="hotTabs">
+        <view
+          wx:for="{{themeTabs}}"
+          wx:key="*this"
+          class="tab {{themeActive===index ? 'active' : ''}}"
+          data-idx="{{index}}"
+          bindtap="changeThemeTab"
+        >
+          {{item}}
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="themePanel" wx:if="{{currentTheme}}">
+      <view class="themePanelHead">
+        <view class="themeTitleRow">
+          <text class="themePeriod">{{currentTheme.period}}</text>
+        </view>
+        <text class="themeDesc">{{currentTheme.description}}</text>
+      </view>
+
+      <view class="themeBlock">
+        <text class="themeBlockTitle">主题活动</text>
+        <view wx:if="{{currentTheme.activities.length > 0}}">
+          <view
+            wx:for="{{currentTheme.activities}}"
+            wx:key="id"
+            class="themeActivityCard"
+            data-id="{{item.id}}"
+            bindtap="goActivityDetail"
+          >
+            <view class="themeActivityCoverWrap">
+              <image src="{{item.cover}}" class="themeActivityCover" mode="aspectFill" />
+            </view>
+            <view class="themeActivityBody">
+              <text class="themeActivityName">{{item.title}}</text>
+              <view class="themeActivityMeta">
+                <text class="dayTag">{{item.dayText}}</text>
+                <text wx:for="{{item.tags}}" wx:key="*this" class="productTag">{{item}}</text>
+              </view>
+              <view class="themeActivityFooter">
+                <text class="themeActivityPrice">{{item.priceText}}</text>
+                <text class="themeActivitySold">{{item.soldText}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="emptyState" wx:else>当前主题活动内容正在整理中</view>
+      </view>
+
+      <view class="themeBlock">
+        <text class="themeBlockTitle">主题商品</text>
+        <view wx:if="{{currentTheme.products.length > 0}}" class="themeProductList">
+          <view
+            wx:for="{{currentTheme.products}}"
+            wx:key="_cardKey"
+            class="themeProductCard"
+            data-id="{{item.id}}"
+            bindtap="goProductDetail"
+          >
+            <image src="{{item.cover}}" class="themeProductCover" mode="aspectFill" />
+            <view class="themeProductBody">
+              <text class="themeProductName">{{item.title}}</text>
+              <view class="themeProductTags">
+                <text wx:for="{{item.tags}}" wx:key="*this" class="productTag">{{item}}</text>
+              </view>
+              <view class="themeProductFooter">
+                <text class="themeProductPrice">{{item.priceText}}</text>
+                <text class="themeProductSold">{{item.soldText}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="emptyState" wx:else>当前主题商品内容正在整理中</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="publishFloat" bindtap="goNotePublish">
+    <view class="publishFloatPlus">+</view>
+    <view class="publishFloatText">发布笔记</view>
+  </view>
+</view>

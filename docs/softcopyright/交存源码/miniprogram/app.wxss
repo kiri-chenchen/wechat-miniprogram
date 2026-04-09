@@ -1,0 +1,43 @@
+/**app.wxss**/
+:root {
+  --theme-page-bg: #f6faf4;
+  --theme-panel-bg: #ffffff;
+  --theme-soft-bg: #edf5ea;
+  --theme-soft-bg-strong: #e4f0df;
+  --theme-primary: #57984a;
+  --theme-primary-dark: #27692a;
+  --theme-primary-light: #dff0dc;
+  --theme-text-main: #1f2a1f;
+  --theme-text-sub: #667566;
+  --theme-text-muted: #99a598;
+  --theme-border: #dbe8d7;
+  --theme-danger: #d9544f;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+} 
+
+button {
+  background: initial;
+}
+
+button:focus{
+  outline: 0;
+}
+
+button::after{
+  border: none;
+}
+
+
+page {
+  background: var(--theme-page-bg);
+  color: var(--theme-text-main);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}

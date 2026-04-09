@@ -2,6 +2,7 @@ const {
   isRenderableMedia,
   resolveActivityBanner,
   resolveActivityCover,
+  resolveMediaSource,
 } = require('../../utils/mediaAssets')
 const { buildActivityCoverTags } = require('../../utils/activityCoverTags')
 
@@ -71,6 +72,14 @@ const REGION_THEME_LIBRARY = [
         description: '适合亲子和朋友同行的农事体验、采摘互动与田园休闲内容。',
         activityKeywords: ['采摘', '田园', '研学', '亲子', '周末'],
         products: ['草莓采摘', '果蔬礼盒', '农场体验券', '手作课堂'],
+      },
+      {
+        id: 'red',
+        title: '金城红旅',
+        period: '红色主题',
+        description: '围绕兰州战役遗址与革命纪念馆整理的城市红色记忆主题，适合研学、党建和历史文化打卡。',
+        activityKeywords: ['红色', '战役', '纪念馆', '遗址'],
+        products: [],
       },
     ],
   },
@@ -238,6 +247,7 @@ const THEME_CONTENT_OVERRIDES = {
   },
   '田园采摘研学': {
     activitySeedKeys: [
+      'lz-yuzhong-qiyun-family-farm-day',
       'lz-yuzhong-strawberry-family-day',
       'lz-suburb-farm-study-camp',
       'lz-gaolan-country-photo-day',
@@ -257,6 +267,13 @@ const THEME_CONTENT_OVERRIDES = {
         tags: ['研学手作', '农场体验'],
       },
     ],
+  },
+  '金城红旅': {
+    scenicSeedKeys: [
+      'lz-yingpanling-battle-site',
+      'lz-eighth-route-army-office-memorial',
+    ],
+    productCards: [],
   },
 }
 
@@ -294,9 +311,10 @@ function getThemeOverride(theme = {}) {
   return THEME_CONTENT_OVERRIDES[normalizeText(theme.title)] || null
 }
 
-function buildThemeActivities(activityList, theme) {
+function buildThemeActivities(activityList, scenicList, theme) {
   const override = getThemeOverride(theme)
   const activitySeedKeys = (override && override.activitySeedKeys) || []
+  const scenicSeedKeys = (override && override.scenicSeedKeys) || []
   if (activitySeedKeys.length) {
     const activityMap = activityList.reduce((result, activity) => {
       result[activity.seedKey] = activity
@@ -305,6 +323,17 @@ function buildThemeActivities(activityList, theme) {
 
     return activitySeedKeys
       .map((seedKey) => activityMap[seedKey])
+      .filter(Boolean)
+  }
+
+  if (scenicSeedKeys.length) {
+    const scenicMap = scenicList.reduce((result, scenic) => {
+      result[scenic.seedKey] = scenic
+      return result
+    }, {})
+
+    return scenicSeedKeys
+      .map((seedKey) => scenicMap[seedKey])
       .filter(Boolean)
   }
 
@@ -380,6 +409,7 @@ Page({
     navItems: NAV_ITEMS,
     bannerList: [],
     activityList: [],
+    scenicList: [],
     productList: [],
     themeTabs: [],
     themeActive: 0,
@@ -392,6 +422,7 @@ Page({
     this.syncRegionName()
     this.startSearchHintRotation()
     this.loadActivities()
+    this.loadScenics()
     this.loadProducts()
   },
 
@@ -518,6 +549,38 @@ Page({
     }
   },
 
+  async loadScenics() {
+    try {
+      const db = wx.cloud.database()
+      const res = await db.collection('scenics').limit(50).get()
+      const scenicList = await Promise.all(
+        ((res && res.data) || []).map(async (item) => ({
+          id: item._id,
+          type: 'scenic',
+          seedKey: item.seedKey || '',
+          title: item.locationName || item.title || '景点推荐',
+          cover: await resolveMediaSource(item.cover, '/images/nav-academy.png'),
+          dayText: '红旅主题',
+          tags: []
+            .concat(Array.isArray(item.playTags) ? item.playTags : [])
+            .concat(Array.isArray(item.tags) ? item.tags : [])
+            .filter(Boolean)
+            .slice(0, 3),
+          priceText: item.priceFrom || item.price ? `¥${item.priceFrom || item.price}` : '免费参观',
+          soldText: item.visitedCount ? `${item.visitedCount}人已到访` : '红色文化推荐',
+          rawTags: item.tags || [],
+        }))
+      )
+
+      this.setData({
+        scenicList,
+      }, () => this.refreshThemeSection())
+    } catch (err) {
+      console.error('load scenics failed', err)
+      this.refreshThemeSection()
+    }
+  },
+
   formatDays(days) {
     if (!days) {
       return '1天'
@@ -529,11 +592,11 @@ Page({
   },
 
   refreshThemeSection() {
-    const { regionName, activityList, productList, themeActive } = this.data
+    const { regionName, activityList, scenicList, productList, themeActive } = this.data
     const themeGroup = pickThemeGroup(regionName)
     const themeList = themeGroup.themes.map((theme) => ({
       ...theme,
-      activities: buildThemeActivities(activityList, theme),
+      activities: buildThemeActivities(activityList, scenicList, theme),
       products: buildThemeProducts(productList, theme),
     }))
     const nextActive = themeList[themeActive] ? themeActive : 0
@@ -603,7 +666,15 @@ Page({
 
   goActivityDetail(e) {
     const id = e.currentTarget.dataset.id
+    const type = e.currentTarget.dataset.type || 'activity'
     if (!id) {
+      return
+    }
+
+    if (type === 'scenic') {
+      wx.navigateTo({
+        url: `/pages/scenicDetail/scenicDetail?id=${id}`,
+      })
       return
     }
 

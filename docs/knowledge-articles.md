@@ -6,7 +6,7 @@
 
 ## 最小必填字段
 
-- `channel`: 文章频道，取值 `agri` 或 `culture`
+- `channel`: 文章频道，取值 `agri`、`culture` 或 `redtour`
 - `status`: 发布状态，前端当前只读取 `published`
 - `title`: 文章标题
 - `publishTime`: 发布时间文本，建议格式 `2026-03-19 10:30`

@@ -1,0 +1,51 @@
+<view class="page">
+  <view class="searchWrap">
+    <view class="searchBox">
+      <view class="city">{{locationCity}}</view>
+      <view class="searchDivider"></view>
+      <view class="searchPlaceholder">地名/酒店/关键词</view>
+    </view>
+  </view>
+
+  <view class="filterBar">
+    <view class="filterItem">智能排序</view>
+    <view class="filterItem">位置区域</view>
+    <view class="filterItem">星级/价格</view>
+    <view class="filterItem">筛选</view>
+  </view>
+
+  <view class="hotelList">
+    <view
+      wx:for="{{hotelList}}"
+      wx:key="_id"
+      class="hotelCard"
+      data-id="{{item._id}}"
+      bindtap="openHotelDetail"
+    >
+      <image class="hotelImg" src="{{item.cover}}" mode="aspectFill"></image>
+
+      <view class="hotelBody">
+        <view class="hotelName">{{item.name}}</view>
+
+        <view class="scoreRow" wx:if="{{Number(item.score) > 0}}">
+          <text class="score">{{item.score}}分</text>
+          <text class="comment">{{item.commentCount}}评论</text>
+        </view>
+
+        <view class="desc">{{item.distanceText}} · {{item.locationText}}</view>
+
+        <view class="tagRow">
+          <text wx:for="{{item.tags}}" wx:key="*this" class="tag">{{item}}</text>
+        </view>
+
+        <view class="priceRow">
+          <text class="price">{{item.displayPrice}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{hotelList.length===0}}" class="empty">
+    暂无酒店数据
+  </view>
+</view>

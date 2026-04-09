@@ -1,0 +1,131 @@
+<view class="page">
+  <view class="customNav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="topbar">
+      <view class="backBtn" bindtap="goBack">
+        <view class="backArrow"></view>
+      </view>
+      <view class="brandWrap">
+        <image class="brandIconImage" src="/images/ask_xiaohe_logo.png" mode="aspectFill"></image>
+        <view class="brandTitle">{{text.brand}}</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view class="content" scroll-y show-scrollbar="{{false}}" style="padding-top: calc({{statusBarHeight}}px + 108rpx);">
+    <view class="introCard" wx:if="{{showSkillIntro}}">
+      {{introText}}
+    </view>
+
+    <view class="chatList">
+      <view class="messageBlock {{item.role}}" wx:for="{{messages}}" wx:key="id">
+        <block wx:if="{{item.role === 'user'}}">
+          <view class="bubble user">
+            <view class="bubbleText" wx:if="{{item.text}}">{{item.text}}</view>
+          </view>
+        </block>
+
+        <block wx:elif="{{item.role === 'ai'}}">
+          <view class="bubble ai aiAsideBubble" wx:if="{{item.text || item.channelLabel}}">
+            <view class="channelLabel" wx:if="{{item.channelLabel}}">
+              {{item.channelLabel}}
+            </view>
+            <view class="bubbleText" wx:if="{{item.text}}">{{item.text}}</view>
+          </view>
+
+          <view class="recommendationList" wx:if="{{item.recommendations && item.recommendations.length}}">
+            <view class="recommendationCard">
+              <view class="recommendationBlock" wx:for="{{item.recommendations}}" wx:key="id">
+                <view class="buddyCardHead" wx:if="{{item.type === 'buddy'}}">
+                  <view>
+                    <view class="recommendationTitleLink">{{item.title}}</view>
+                    <view class="buddyStatusTag" wx:if="{{item.statusTag}}">{{item.statusTag}}</view>
+                  </view>
+                  <view class="buddyScore">{{item.matchScoreText}}</view>
+                </view>
+                <view wx:else class="recommendationTitleLink" data-type="{{item.type}}" data-sourceid="{{item.sourceId}}" bindtap="openCardDetail">
+                  {{item.title}}
+                </view>
+                <view class="recommendationGallery" wx:if="{{item.gallery && item.gallery.length}}">
+                  <image class="recommendationGalleryImage" wx:for="{{item.gallery}}" wx:key="*this" src="{{item}}" mode="aspectFill" />
+                </view>
+                <view class="buddyPlan" wx:if="{{item.type === 'buddy' && item.planSummary}}">{{item.planSummary}}</view>
+                <view class="recommendationSummary">{{item.summary}}</view>
+                <view class="resultSection" wx:if="{{item.type === 'buddy' && item.matchReason}}">
+                  <view class="resultSectionTitle">匹配理由</view>
+                  <view class="resultInfoValue">{{item.matchReason}}</view>
+                </view>
+                <view class="resultTags" wx:if="{{item.tags && item.tags.length}}">
+                  <view class="resultTag" wx:for="{{item.tags}}" wx:key="*this">{{item}}</view>
+                </view>
+                <view class="resultSection" wx:if="{{item.playItems && item.playItems.length}}">
+                  <view class="resultSectionTitle">值得关注</view>
+                  <view class="resultBulletItem" wx:for="{{item.playItems}}" wx:key="*this">
+                    <view class="resultBulletDot"></view>
+                    <view class="resultBulletText">{{item}}</view>
+                  </view>
+                </view>
+                <view class="resultSection" wx:if="{{item.practicalInfo && item.practicalInfo.length}}">
+                  <view class="resultSectionTitle">出行参考</view>
+                  <view class="resultInfoRow" wx:for="{{item.practicalInfo}}" wx:key="label">
+                    <text class="resultInfoLabel">{{item.label}}：</text>
+                    <text class="resultInfoValue">{{item.value}}</text>
+                  </view>
+                </view>
+                <view
+                  class="buddyApplyBtn"
+                  wx:if="{{item.type === 'buddy' && item.actionText}}"
+                  data-username="{{item.title}}"
+                  data-opening="{{item.openingText}}"
+                  data-avatarurl="{{item.avatarUrl}}"
+                  data-avatartext="{{item.avatarText}}"
+                  data-avatarcolor="{{item.avatarColor}}"
+                  data-matchscore="{{item.matchScore}}"
+                  data-matchreason="{{item.matchReason}}"
+                  bindtap="applyBuddyMatch"
+                >
+                  {{item.actionText}}
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <view class="bubble ai aiAsideBubble" wx:if="{{item.tips}}">
+            <view class="tipsText">{{item.tips}}</view>
+          </view>
+
+          <view class="bubble ai aiAsideBubble" wx:if="{{item.followUp}}">
+            <view class="followUpText">{{item.followUp}}</view>
+          </view>
+        </block>
+
+        <view class="guessBlock" wx:if="{{item.role === 'ai' && item.guessQuestions && item.guessQuestions.length}}">
+          <view class="guessTitle">你还可以继续问</view>
+          <view class="guessList">
+            <view class="guessItem" wx:for="{{item.guessQuestions}}" wx:key="*this" data-question="{{item}}" bindtap="useQuickOption">
+              {{item}}
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="quickOptionList" wx:if="{{quickOptions.length}}">
+      <view class="quickOption" wx:for="{{quickOptions}}" wx:key="*this" data-question="{{item}}" bindtap="useQuickOption">
+        {{item}}
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="composerWrap">
+    <view class="skillBadge" wx:if="{{showSkillBadge}}">
+      <view class="skillBadgeIconPlaceholder"></view>
+      <view class="skillBadgeText">{{skillBadgeName}}</view>
+    </view>
+    <view class="composer">
+      <input class="composerInput" value="{{inputValue}}" placeholder="{{inputPlaceholder}}" placeholder-class="composerPlaceholder" confirm-type="send" bindinput="onInputChange" bindconfirm="submitInput" />
+      <view class="composerSendBtn" bindtap="submitInput">
+        {{isAiLoading ? '整理中' : '发送'}}
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,186 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at top left, rgba(186, 218, 183, 0.42) 0, rgba(186, 218, 183, 0) 36%),
+    radial-gradient(circle at 85% 22%, rgba(225, 239, 210, 0.68) 0, rgba(225, 239, 210, 0) 28%),
+    linear-gradient(180deg, #f7fbf5 0%, #eef6ea 58%, #f8fbf7 100%);
+  overflow: hidden;
+}
+
+.ambient {
+  position: absolute;
+  border-radius: 999rpx;
+  filter: blur(16rpx);
+  opacity: 0.9;
+}
+
+.ambientLeft {
+  top: 220rpx;
+  left: -120rpx;
+  width: 360rpx;
+  height: 360rpx;
+  background: rgba(213, 232, 193, 0.78);
+}
+
+.ambientRight {
+  top: 640rpx;
+  right: -90rpx;
+  width: 280rpx;
+  height: 280rpx;
+  background: rgba(194, 222, 184, 0.72);
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.18) 0, rgba(255, 255, 255, 0) 34%),
+    linear-gradient(290deg, rgba(255, 255, 255, 0.12) 0, rgba(255, 255, 255, 0) 38%);
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 90rpx 40rpx 24rpx;
+}
+
+.brandBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.brandAvatar {
+  width: 168rpx;
+  height: 168rpx;
+  border-radius: 50%;
+  border: 8rpx solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24rpx 56rpx rgba(65, 109, 60, 0.16);
+}
+
+.brandName {
+  margin-top: 28rpx;
+  font-size: 56rpx;
+  font-weight: 700;
+  color: #23472a;
+  letter-spacing: 2rpx;
+}
+
+.brandTagline {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  color: #70856f;
+  line-height: 1.7;
+}
+
+.heroBlock {
+  margin-top: 88rpx;
+  text-align: center;
+}
+
+.heroTitle {
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #203624;
+  line-height: 1.34;
+}
+
+.heroDesc {
+  margin-top: 22rpx;
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: #697d67;
+  padding: 0 16rpx;
+}
+
+.formCard {
+  margin-top: 72rpx;
+  padding: 42rpx 36rpx 40rpx;
+  border-radius: 36rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2rpx solid rgba(223, 235, 218, 0.95);
+  box-shadow: 0 30rpx 64rpx rgba(49, 92, 53, 0.1);
+  backdrop-filter: blur(12rpx);
+}
+
+.cardTop {
+  margin-bottom: 34rpx;
+  text-align: center;
+}
+
+.cardBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 168rpx;
+  height: 50rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: #edf5ea;
+  color: #57984a;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.cardHint {
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #37553b;
+  line-height: 1.6;
+}
+
+.primaryButton {
+  width: 100%;
+  height: 94rpx;
+  line-height: 94rpx;
+  border: none;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #57984a 0%, #57984a 100%);
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 700;
+  box-shadow: 0 16rpx 36rpx rgba(87, 152, 74, 0.22);
+}
+
+.primaryButton[disabled] {
+  background: #b7c8b4;
+  box-shadow: none;
+}
+
+.agreement {
+  margin-top: 28rpx;
+  text-align: center;
+  font-size: 24rpx;
+  line-height: 1.8;
+  color: #80907e;
+}
+
+.agreementStrong {
+  color: #57984a;
+}
+
+.agreementJoin,
+.agreementPrefix {
+  color: #80907e;
+}
+
+.footer {
+  position: relative;
+  z-index: 1;
+  padding: 18rpx 44rpx 48rpx;
+  font-size: 22rpx;
+  line-height: 1.7;
+  text-align: center;
+  color: #81917f;
+}

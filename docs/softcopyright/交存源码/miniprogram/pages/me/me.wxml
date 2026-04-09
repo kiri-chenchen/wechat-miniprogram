@@ -1,0 +1,82 @@
+<view class="page">
+  <view class="topSpacer" style="padding-top: {{statusBarHeight}}px;"></view>
+
+  <view class="header">
+    <view class="userBox {{loggedIn ? 'userBoxLoggedIn' : 'userBoxGuest'}}">
+      <image
+        class="avatar"
+        src="{{userInfo.avatarUrl}}"
+        mode="aspectFill"
+        bindtap="onUserBoxTap"
+        binderror="onAvatarError"
+      ></image>
+
+      <view class="userInfo">
+        <block wx:if="{{loggedIn}}">
+          <view class="nickname">{{userInfo.nickName}}</view>
+          <view class="edit" bindtap="goEditProfile">{{text.editProfile}}</view>
+        </block>
+
+        <block wx:else>
+          <view class="guestRow">
+            <view class="guestHint" bindtap="onUserBoxTap">{{text.guestHint}}</view>
+            <view class="loginButton" bindtap="goLogin">{{text.authLogin}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <view class="dnaTagsBox" bindtap="goMyDNATags">
+    <view class="dnaTagsLabel">{{text.myDNA}}</view>
+    <view wx:if="{{dnaTags.length > 0}}" class="dnaTags">
+      <view class="tag" wx:for="{{dnaTags}}" wx:key="*this">{{item}}</view>
+    </view>
+    <view wx:else class="dnaPlaceholder">{{dnaPlaceholderText}}</view>
+  </view>
+
+  <view class="orderSection">
+    <view class="orderHeader">
+      <view class="orderTitle">{{text.myOrders}}</view>
+      <view class="orderAll" bindtap="goAllOrders">
+        <text>{{text.allOrders}}</text>
+        <text class="orderAllArrow">></text>
+      </view>
+    </view>
+
+    <view class="orderIcons">
+      <view
+        class="orderItem"
+        wx:for="{{orderEntries}}"
+        wx:key="key"
+        data-tab="{{item.tab}}"
+        bindtap="goOrderTab"
+      >
+        <image class="orderIcon" src="{{item.icon}}" mode="aspectFit"></image>
+        <text class="orderLabel">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="menu">
+    <view class="menuItem" bindtap="goFavorites">
+      <text class="menuText">{{text.favorites}}</text>
+      <text class="arrow">></text>
+    </view>
+
+    <view class="menuItem" bindtap="goCustomerService">
+      <text class="menuText">{{text.customerService}}</text>
+      <text class="arrow">></text>
+    </view>
+
+    <view class="menuItem" bindtap="goSystemSetting">
+      <text class="menuText">{{text.systemSettings}}</text>
+      <text class="arrow">></text>
+    </view>
+
+    <view class="menuItem logout" bindtap="logout">
+      <text class="menuText">{{text.logout}}</text>
+      <text class="arrow">></text>
+    </view>
+  </view>
+</view>

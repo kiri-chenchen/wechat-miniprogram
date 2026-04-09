@@ -1,0 +1,70 @@
+﻿.container{
+  padding:30rpx;
+  background:#f6faf4;
+  min-height:100vh;
+}
+
+.card{
+  background:#ffffff;
+  border-radius:16rpx;
+  padding:30rpx;
+  margin-bottom:30rpx;
+}
+
+.title{
+  font-size:30rpx;
+  font-weight:bold;
+  margin-bottom:20rpx;
+}
+
+.picker{
+  padding:20rpx;
+  border:1px solid #dbe8d7;
+  border-radius:10rpx;
+}
+
+.placeholder{
+  color:#99a598;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:20rpx 0;
+}
+
+.counter{
+  display:flex;
+  align-items:center;
+}
+
+.btn{
+  width:60rpx;
+  height:60rpx;
+  line-height:60rpx;
+}
+
+.num{
+  width:60rpx;
+  text-align:center;
+}
+
+.child-tip{
+  color:red;
+  font-size:24rpx;
+}
+
+.bottom{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  padding:20rpx;
+  background:#ffffff;
+}
+
+.next{
+  background:#57984a;
+  color:#ffffff;
+}

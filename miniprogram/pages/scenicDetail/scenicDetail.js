@@ -3,6 +3,10 @@ const {
   toggleFavorite,
   recordFootprint,
 } = require('../../utils/collectionStore')
+const {
+  resolveMediaSource,
+  resolveMediaList,
+} = require('../../utils/mediaAssets')
 
 Page({
   data: {
@@ -45,7 +49,7 @@ Page({
     try {
       const db = wx.cloud.database()
       const res = await db.collection('scenics').doc(id).get()
-      const detail = this.normalizeDetail(res.data || null)
+      const detail = await this.normalizeDetail(res.data || null)
       const favorited = isFavorited('scenic', detail && detail._id)
       if (detail) {
         recordFootprint(this.buildCollectionRecord(detail))
@@ -66,13 +70,17 @@ Page({
     }
   },
 
-  normalizeDetail(detail) {
+  async normalizeDetail(detail) {
     if (!detail) {
       return null
     }
 
-    const cover = detail.cover || '/images/nav-academy.png'
-    const gallery = Array.isArray(detail.gallery) && detail.gallery.length ? detail.gallery : [cover]
+    const fallbackCover = '/images/nav-academy.png'
+    const cover = await resolveMediaSource(detail.cover, fallbackCover)
+    const rawGallery = Array.isArray(detail.gallery) && detail.gallery.length
+      ? detail.gallery
+      : [detail.cover || fallbackCover]
+    const gallery = await resolveMediaList(rawGallery, cover)
     const tags = []
       .concat(Array.isArray(detail.tags) ? detail.tags : [])
       .concat(Array.isArray(detail.playTags) ? detail.playTags : [])

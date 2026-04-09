@@ -1,0 +1,460 @@
+.page {
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(183, 149, 255, 0.18), transparent 28%),
+    radial-gradient(circle at top left, rgba(255, 215, 138, 0.2), transparent 24%),
+    linear-gradient(180deg, #fbf5ff 0%, #ffffff 32%, #fafafc 100%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.customNav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 0 24rpx 2rpx;
+  min-height: 92rpx;
+  background:
+    radial-gradient(circle at top right, rgba(183, 149, 255, 0.18), transparent 28%),
+    radial-gradient(circle at top left, rgba(255, 215, 138, 0.2), transparent 24%),
+    linear-gradient(180deg, rgba(251, 245, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 76%, rgba(255, 255, 255, 0) 100%);
+  box-sizing: border-box;
+  backdrop-filter: blur(18rpx) saturate(120%);
+  -webkit-backdrop-filter: blur(18rpx) saturate(120%);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 70rpx;
+  padding-bottom: 0;
+}
+
+.backBtn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.backArrow {
+  width: 20rpx;
+  height: 20rpx;
+  border-left: 4rpx solid #1f1f1f;
+  border-bottom: 4rpx solid #1f1f1f;
+  transform: rotate(45deg);
+}
+
+.brandWrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.brandIconImage {
+  width: 66rpx;
+  height: 66rpx;
+  border-radius: 50%;
+  display: block;
+  flex-shrink: 0;
+}
+
+.brandTitle {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #232323;
+  letter-spacing: 0.5rpx;
+}
+
+.content {
+  flex: 1;
+  height: 100vh;
+  padding: 24rpx 24rpx 240rpx;
+  box-sizing: border-box;
+}
+
+.introCard {
+  padding: 28rpx 30rpx;
+  border-radius: 28rpx;
+  background: rgba(244, 241, 255, 0.92);
+  color: #655b8f;
+  font-size: 28rpx;
+  line-height: 1.75;
+  text-align: center;
+  box-shadow: 0 14rpx 28rpx rgba(140, 104, 255, 0.08);
+}
+
+.chatList {
+  margin-top: 22rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.messageBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  width: 100%;
+}
+
+.messageBlock.user {
+  align-items: flex-end;
+}
+
+.messageBlock.ai {
+  align-items: flex-start;
+}
+
+.bubble {
+  padding: 22rpx 24rpx;
+  border-radius: 28rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+  box-sizing: border-box;
+  max-width: 66%;
+}
+
+.bubble.user {
+  background: rgba(241, 235, 255, 0.98);
+  color: #52468d;
+}
+
+.bubble.ai {
+  background: rgba(255, 255, 255, 0.96);
+  color: #000000;
+  box-shadow: 0 16rpx 32rpx rgba(140, 104, 255, 0.08);
+}
+
+.aiAsideBubble {
+  max-width: 66%;
+}
+
+.bubbleText {
+  white-space: pre-wrap;
+  color: #000000;
+  word-break: break-all;
+}
+
+.channelLabel {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(126, 99, 255, 0.1);
+  color: #6d56d6;
+  font-size: 28rpx;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.recommendationList {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  align-items: stretch;
+  width: 100%;
+}
+
+.recommendationCard {
+  overflow: hidden;
+  width: 100%;
+  padding: 28rpx 30rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 16rpx 32rpx rgba(140, 104, 255, 0.08);
+  box-sizing: border-box;
+}
+
+.recommendationBlock + .recommendationBlock {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid rgba(164, 136, 255, 0.14);
+}
+
+.buddyCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.recommendationSummary {
+  margin-top: 16rpx;
+  color: #000000;
+  font-size: 28rpx;
+  line-height: 1.7;
+  word-break: break-all;
+}
+
+.resultTags {
+  margin-top: 14rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.buddyStatusTag {
+  margin-top: 10rpx;
+  color: #7f67e8;
+  font-size: 24rpx;
+  line-height: 1.4;
+}
+
+.buddyScore {
+  flex-shrink: 0;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(126, 99, 255, 0.12);
+  color: #6d56d6;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.buddyPlan {
+  margin-top: 14rpx;
+  color: #53478f;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.resultTag {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(241, 235, 255, 0.95);
+  color: #6a55ca;
+  font-size: 22rpx;
+}
+
+.resultSection {
+  margin-top: 18rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx solid rgba(164, 136, 255, 0.14);
+}
+
+.resultSectionTitle {
+  margin-bottom: 12rpx;
+  color: #000000;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.resultBulletItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10rpx;
+  margin-top: 8rpx;
+}
+
+.resultBulletDot {
+  width: 10rpx;
+  height: 10rpx;
+  margin-top: 13rpx;
+  border-radius: 50%;
+  background: #8b6bff;
+  flex-shrink: 0;
+}
+
+.resultBulletText {
+  color: #000000;
+  font-size: 28rpx;
+  line-height: 1.7;
+  word-break: break-all;
+}
+
+.resultInfoRow {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #000000;
+  word-break: break-all;
+}
+
+.resultInfoLabel {
+  font-weight: 700;
+  color: #000000;
+}
+
+.resultInfoValue {
+  color: #000000;
+  word-break: break-all;
+}
+
+.buddyApplyBtn {
+  margin-top: 20rpx;
+  height: 78rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(90deg, #7da6ff 0%, #b46cff 100%);
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tipsText,
+.followUpText {
+  color: #000000;
+  font-size: 28rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.guessBlock {
+  margin-top: 8rpx;
+  padding-left: 6rpx;
+}
+
+.guessTitle {
+  margin-bottom: 14rpx;
+  color: #000000;
+  font-size: 28rpx;
+  line-height: 1.4;
+}
+
+.guessList {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  align-items: flex-start;
+}
+
+.guessItem {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 16rpx 22rpx;
+  border-radius: 20rpx;
+  background: rgba(244, 241, 255, 0.95);
+  color: #5a4d8e;
+  font-size: 28rpx;
+  line-height: 1.55;
+  box-sizing: border-box;
+  box-shadow: 0 8rpx 20rpx rgba(140, 104, 255, 0.05);
+}
+
+.quickOptionList {
+  margin-top: 26rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.quickOption {
+  align-self: flex-start;
+  max-width: 84%;
+  padding: 18rpx 24rpx;
+  border-radius: 22rpx;
+  background: rgba(244, 241, 255, 0.95);
+  color: #4a4280;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.composerWrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 24rpx calc(env(safe-area-inset-bottom) + 18rpx);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(253, 250, 255, 0.96) 26%, #ffffff 100%);
+}
+
+.skillBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-left: 12rpx;
+  margin-bottom: 12rpx;
+  padding: 12rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2rpx solid rgba(122, 93, 234, 0.28);
+  box-shadow: 0 10rpx 20rpx rgba(140, 104, 255, 0.08);
+}
+
+.skillBadgeIconPlaceholder {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 10rpx;
+  border: 2rpx dashed rgba(122, 93, 234, 0.45);
+  background: rgba(244, 241, 255, 1);
+}
+
+.skillBadgeText {
+  color: #232323;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-height: 92rpx;
+  padding: 8rpx 16rpx 8rpx 24rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.98);
+  border: 2rpx solid rgba(122, 93, 234, 0.4);
+  box-shadow: 0 16rpx 28rpx rgba(140, 104, 255, 0.08);
+}
+
+.composerInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  color: #1f1f1f;
+}
+
+.composerPlaceholder {
+  color: #b6b6b6;
+}
+
+.composerSendBtn {
+  min-width: 132rpx;
+  height: 60rpx;
+  padding: 0 22rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(90deg, #7da6ff 0%, #b46cff 100%);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recommendationTitleLink {
+  display: inline-block;
+  color: #5f73ff;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.recommendationGallery {
+  margin-top: 18rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.recommendationGalleryImage {
+  width: 210rpx;
+  height: 210rpx;
+  border-radius: 18rpx;
+  background: #ece5ff;
+  flex: 0 0 210rpx;
+}

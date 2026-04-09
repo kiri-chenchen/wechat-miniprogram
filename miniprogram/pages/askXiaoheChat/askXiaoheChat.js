@@ -1,5 +1,13 @@
-const { yuxiaoheBotId } = require("../../config/agent")
-const { resolveActivityCover, resolveActivityGallery } = require("../../utils/mediaAssets")
+﻿const {
+  yuxiaoheBotId,
+  yuxiaoheHttpBaseUrl
+} = require("../../config/agent")
+const {
+  resolveMediaSource,
+  resolveMediaList,
+  resolveActivityCover,
+  resolveActivityGallery
+} = require("../../utils/mediaAssets")
 const { buildActivityCoverTags } = require("../../utils/activityCoverTags")
 const { createBuddyApplicationFromMatch } = require("../../utils/messageStore")
 const {
@@ -11,7 +19,7 @@ const {
 
 const DEFAULT_ACTIVITY_COVER = "/images/nav-academy.png"
 const DEFAULT_PRODUCT_COVER = "/images/default-goods-image.png"
-const LOADING_BASE_TEXT = "小禾正在整理合适的内容"
+const LOADING_BASE_TEXT = "小禾正在思考中"
 
 function normalizeSkillMode(skillMode = "") {
   return skillMode === "route_planning" ? "guide_customization" : skillMode
@@ -35,12 +43,7 @@ const SKILL_CONFIG = {
   }
 }
 
-const DEFAULT_BUDDY_TAGS = ["周末出发", "自由行", "轻社交"]
-
-const GENERIC_BUDDY_STATUS_TAGS = ["偏好接近"]
-const GENERIC_BUDDY_TAGS = ["还在建立中"]
-const GENERIC_BUDDY_HIGHLIGHT_KEYWORDS = ["共同偏好", "资料完整度", "还在建立中"]
-const GENERIC_BUDDY_PRACTICAL_VALUES = ["轻同行搭子", "同区域"]
+const BUDDY_AVATAR_COLORS = ["#5B8FF9", "#61DDAA", "#F6BD16", "#E8684A", "#6DC8EC", "#9270CA"]
 
 function normalizeText(value) {
   return String(value || "").trim()
@@ -108,106 +111,49 @@ function buildLocationContext(userInfo = {}, userLocation = null, selectedRegion
   }
 }
 
-function ensureBuddySession() {
-  const app = getApp()
-  if (app.hasActiveSession && app.hasActiveSession()) {
-    return true
-  }
-
-  wx.showToast({
-    title: "请先登录后再找搭子",
-    icon: "none"
-  })
-
-  setTimeout(() => {
-    wx.navigateTo({
-      url: "/pages/login/login"
-    })
-  }, 250)
-
-  return false
-}
-
 function uniqueList(list = []) {
   return Array.from(new Set((list || []).filter(Boolean)))
 }
 
-function filterBuddyStatusTag(tag = "") {
-  const text = normalizeText(tag)
-  return GENERIC_BUDDY_STATUS_TAGS.includes(text) ? "" : text
-}
+function requestAgentHttp({ path = "", method = "GET", data = null, timeout = 15000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const baseUrl = normalizeText(yuxiaoheHttpBaseUrl).replace(/\/$/, "")
+    const normalizedPath = normalizeText(path)
+    if (!baseUrl || !normalizedPath) {
+      reject(new Error("agent http config missing"))
+      return
+    }
 
-function filterBuddyTags(tags = []) {
-  return uniqueList(normalizeArray(tags).filter((tag) => !GENERIC_BUDDY_TAGS.includes(tag)))
-}
+    wx.request({
+      url: `${baseUrl}${normalizedPath}`,
+      method,
+      data,
+      timeout,
+      header: {
+        "content-type": "application/json"
+      },
+      success(res) {
+        const statusCode = Number(res && res.statusCode)
+        if (statusCode >= 200 && statusCode < 300) {
+          resolve(res.data)
+          return
+        }
 
-function filterBuddyHighlights(items = []) {
-  return normalizeArray(items).filter(
-    (item) => !GENERIC_BUDDY_HIGHLIGHT_KEYWORDS.some((keyword) => item.includes(keyword))
-  )
-}
-
-function filterBuddyPracticalInfo(list = []) {
-  return (Array.isArray(list) ? list : []).filter((item) => {
-    const value = normalizeText(item && item.value)
-    return value && !GENERIC_BUDDY_PRACTICAL_VALUES.includes(value)
+        console.warn("[askXiaoheChat] requestAgentHttp non-2xx", {
+          path: normalizedPath,
+          method,
+          statusCode,
+          data: res && res.data
+        })
+        reject(new Error(`request failed with status ${statusCode || 0}`))
+      },
+      fail(error) {
+        reject(error)
+      }
+    })
   })
 }
 
-function buildBuddyDisplaySummary(item = {}) {
-  const tags = filterBuddyTags(item.tags)
-  if (tags.length) {
-    return `真实标签：${tags.slice(0, 3).join("、")}`
-  }
-
-  const practicalInfo = filterBuddyPracticalInfo(item.practicalInfo)
-  const locationInfo = practicalInfo.find((entry) => normalizeText(entry && entry.label).includes("地区"))
-  if (locationInfo && locationInfo.value) {
-    return `真实资料：来自${locationInfo.value}`
-  }
-
-  return "以下展示的是该用户已填写的公开资料，以及系统基于资料生成的匹配结果。"
-}
-
-function buildBuddySystemReason(item = {}) {
-  const parts = []
-  const statusTag = filterBuddyStatusTag(item.statusTag)
-  const tags = filterBuddyTags(item.tags)
-
-  if (statusTag) {
-    parts.push(statusTag)
-  }
-
-  if (tags.length) {
-    parts.push(`标签重合 ${Math.min(tags.length, 3)} 项`)
-  }
-
-  if (item.matchScore) {
-    parts.push(`匹配度 ${item.matchScore}%`)
-  }
-
-  return `系统匹配说明：${parts.join(" + ") || "已根据地区、已填写标签和资料完整度完成匹配"}`
-}
-
-function normalizeBuddyRecommendation(item = {}) {
-  const tags = filterBuddyTags(item.tags)
-  const practicalInfo = filterBuddyPracticalInfo(item.practicalInfo)
-
-  return {
-    ...item,
-    statusTag: filterBuddyStatusTag(item.statusTag),
-    summary: buildBuddyDisplaySummary({ ...item, tags, practicalInfo }),
-    matchReason: buildBuddySystemReason({ ...item, tags }),
-    reasonTitle: "系统匹配说明",
-    tags,
-    playItems: filterBuddyHighlights(item.playItems),
-    practicalInfo,
-  }
-}
-
-function trimRegionSuffix(value = "") {
-  return normalizeText(value).replace(/(特别行政区|自治区|自治州|地区|盟|省|市|区|县|旗)$/u, "")
-}
 
 function createMessage(role, text, extra = {}) {
   return {
@@ -257,6 +203,340 @@ function createEmptyTaskState(mainline = "") {
 function createInitialTaskState(skillMode = "") {
   const mainline = MAINLINE_BY_SKILL_MODE[normalizeText(skillMode)] || ""
   return createEmptyTaskState(mainline)
+}
+
+function buildTaskStateFromBackend(result = {}, fallbackState = {}) {
+  const collected = result && result.collected && typeof result.collected === "object"
+    ? { ...result.collected }
+    : { ...(fallbackState.collected || {}) }
+  const missingField = result && result.missingField && typeof result.missingField === "object"
+    ? normalizeText(result.missingField.key || result.missingField.label)
+    : normalizeText(result && result.missingField)
+
+  return {
+    ...createEmptyTaskState(normalizeText(result && result.mainline)),
+    ...fallbackState,
+    mainline: normalizeText(result && result.mainline) || normalizeText(fallbackState.mainline),
+    collected,
+    missingField,
+    lastAskedField: normalizeText(result && result.lastAskedField) || missingField || normalizeText(fallbackState.lastAskedField),
+    candidateIds: normalizeArray((result.candidates || []).map((item) => item && item.id)),
+    feedbackType: normalizeText(result && result.feedbackType) || normalizeText(fallbackState.feedbackType),
+    intentConfidence: 1
+  }
+}
+
+function hasReadableBuddyText(value = "") {
+  const text = normalizeText(value)
+  if (!text) return false
+  return !/(系统筛选|同行候选|已完善基础资料|可进一步发起同行申请|地区待补充|未提供|未知|待补充)/u.test(text)
+}
+
+function filterBuddyStatusTag(tag = "") {
+  const text = normalizeText(tag)
+  return hasReadableBuddyText(text) ? text : ""
+}
+
+function filterBuddyTags(tags = []) {
+  return uniqueList(normalizeArray(tags)).filter(hasReadableBuddyText)
+}
+
+function filterBuddyHighlights(items = []) {
+  return normalizeArray(items).filter(hasReadableBuddyText)
+}
+
+function filterBuddyPracticalInfo(list = []) {
+  return (Array.isArray(list) ? list : []).filter((item) => {
+    const label = normalizeText(item && item.label)
+    const value = normalizeText(item && item.value)
+    return label && value && hasReadableBuddyText(value)
+  })
+}
+
+function buildBuddyTextPool(item = {}) {
+  return normalizeTextLower([
+    item.title,
+    item.nickname,
+    item.summary,
+    item.matchReason,
+    item.region
+  ]
+    .concat(normalizeArray(item.tags))
+    .join(" "))
+}
+
+function removeBuddyRegionSuffix(value = "") {
+  return normalizeText(value).replace(/(特别行政区|自治区|自治州|地区|盟|省|市|区|县|旗)$/u, "")
+}
+
+function isBuddyRegionClose(departure = "", region = "") {
+  const left = removeBuddyRegionSuffix(departure)
+  const right = removeBuddyRegionSuffix(region)
+  if (!left || !right) return false
+  return left.includes(right) || right.includes(left)
+}
+
+function calculateBuddyMatchScore(item = {}, taskState = {}) {
+  const collected = (taskState && taskState.collected) || {}
+  const tags = filterBuddyTags(item.tags)
+  const region = normalizeText(item.region)
+  const summary = normalizeText(item.summary)
+  const companionPreference = normalizeText(collected.companionPreference)
+  const destination = normalizeText(collected.destination)
+  const departure = normalizeText(collected.departure)
+  const textPool = buildBuddyTextPool(item)
+
+  let score = 58
+  score += Math.min(tags.length * 6, 18)
+  if (hasReadableBuddyText(region)) score += 8
+  if (hasReadableBuddyText(summary)) score += 8
+  if (companionPreference && textPool.includes(normalizeTextLower(companionPreference))) score += 8
+  if (destination && textPool.includes(normalizeTextLower(destination))) score += 8
+  if (departure && isBuddyRegionClose(departure, region)) score += 8
+
+  return Math.max(58, Math.min(98, score))
+}
+
+function buildBuddyDisplaySummary(item = {}, taskState = {}) {
+  if (hasReadableBuddyText(item.summary)) {
+    return normalizeText(item.summary)
+  }
+
+  const destination = normalizeText(taskState && taskState.collected && taskState.collected.destination)
+  const region = normalizeText(item.region)
+  if (destination && region) {
+    return `对${destination}这类同行计划有一定契合度，也方便继续沟通具体安排。`
+  }
+  if (region) {
+    return `资料里显示活动区域在${region}，适合继续聊出发时间和同行节奏。`
+  }
+
+  return "这位用户的公开资料和你的同行需求方向比较接近，可以继续确认时间和计划。"
+}
+
+function buildBuddySystemReason(item = {}, taskState = {}) {
+  if (hasReadableBuddyText(item.matchReason)) {
+    return normalizeText(item.matchReason)
+  }
+
+  const collected = (taskState && taskState.collected) || {}
+  const companionPreference = normalizeText(collected.companionPreference)
+  const destination = normalizeText(collected.destination)
+  const parts = []
+  if (destination) parts.push(`目的地方向和“${destination}”接近`)
+  if (companionPreference) parts.push(`同行偏好贴近“${companionPreference}”`)
+  if (normalizeText(item.region)) parts.push("地区信息清晰，方便继续约时间")
+  return parts[0] || "公开资料和这次同行需求方向比较接近。"
+}
+
+function buildBuddyPlayItems(item = {}, summary = "") {
+  const tags = filterBuddyTags(item.tags)
+  if (tags.length) return tags.slice(0, 3)
+  if (hasReadableBuddyText(summary)) return [summary]
+  return ["可继续沟通出发时间和同行安排"]
+}
+
+function buildBuddyPracticalInfo(item = {}) {
+  const list = []
+  const region = normalizeText(item.region)
+  if (hasReadableBuddyText(region)) {
+    list.push({ label: "所在地区", value: region })
+  }
+  return filterBuddyPracticalInfo(list)
+}
+
+function buildBuddyOpeningText(item = {}, taskState = {}) {
+  const collected = (taskState && taskState.collected) || {}
+  const destination = normalizeText(collected.destination)
+  const time = normalizeText(collected.time)
+  const tripText = [time, destination].filter(Boolean).join(" ")
+  return `你好，我也对${tripText || "这次同行"}感兴趣，方便聊聊你的计划吗？`
+}
+
+function buildBuddyAvatarText(title = "") {
+  return normalizeText(title).slice(0, 1) || "搭"
+}
+
+function buildBuddyAvatarColor(seed = "") {
+  const text = normalizeText(seed)
+  let total = 0
+  for (let index = 0; index < text.length; index += 1) {
+    total += text.charCodeAt(index)
+  }
+  return BUDDY_AVATAR_COLORS[total % BUDDY_AVATAR_COLORS.length]
+}
+
+function normalizeBuddyRecommendation(item = {}, taskState = {}) {
+  const title = normalizeText(item.title || item.nickname) || "搭子候选"
+  const summary = buildBuddyDisplaySummary(item, taskState)
+  const matchReason = buildBuddySystemReason(item, taskState)
+  const tags = filterBuddyTags(item.tags)
+  const matchScore = calculateBuddyMatchScore(item, taskState)
+
+  return {
+    ...item,
+    title,
+    statusTag: filterBuddyStatusTag(item.statusTag),
+    summary,
+    matchReason,
+    reasonTitle: "匹配理由",
+    tags,
+    playItems: buildBuddyPlayItems(item, summary),
+    practicalInfo: buildBuddyPracticalInfo(item),
+    matchScore,
+    matchScoreText: `${matchScore}%契合度`,
+    actionText: "发送搭子申请",
+    openingText: buildBuddyOpeningText(item, taskState),
+    avatarText: buildBuddyAvatarText(title),
+    avatarColor: buildBuddyAvatarColor(normalizeText(item.id || title))
+  }
+}
+
+function buildGuideCardIntro(taskState = {}) {
+  const collected = (taskState && taskState.collected) || {}
+  const time = normalizeText(collected.time)
+  const relationship = normalizeText(collected.relationship)
+  const destination = normalizeText(collected.destination)
+  const budget = normalizeText(collected.budget)
+  const segments = [
+    time ? `${time}期间` : "",
+    relationship ? `和${relationship}` : "",
+    destination ? `去${destination}` : "",
+    budget ? `预算在${budget}` : ""
+  ].filter(Boolean)
+
+  if (!segments.length) {
+    return "小禾先帮你整理了几张更适合直接参考的卡片。"
+  }
+
+  return `小禾先按你这次${segments.join("，")}的需求，整理了几张更适合直接参考的卡片。`
+}
+
+function buildGuideWarmTips(taskState = {}) {
+  const collected = (taskState && taskState.collected) || {}
+  const destination = normalizeText(collected.destination) || "目的地"
+  const time = normalizeText(collected.time)
+  const relationship = normalizeText(collected.relationship)
+  const budget = normalizeText(collected.budget)
+
+  const tips = []
+  if (time) {
+    tips.push(`${time}前往${destination}时，建议优先确认开放时间、天气和交通情况。`)
+  } else {
+    tips.push(`去${destination}前，记得再确认开放时间、天气和交通情况。`)
+  }
+
+  if (relationship) {
+    tips.push(`这次同行关系是${relationship}，更适合把节奏放慢一些。`)
+  } else if (budget) {
+    tips.push(`预算在${budget}的话，建议优先把同一区域的点位串起来。`)
+  }
+
+  return ["温馨提示"]
+    .concat(tips.slice(0, 2).map((item, index) => `${index + 1}. ${item}`))
+    .join("\n")
+}
+
+function findRecordByCandidateId(list = [], candidate = {}) {
+  const candidateId = normalizeText(candidate && candidate.id)
+  if (!candidateId) return null
+
+  return (Array.isArray(list) ? list : []).find((item) => {
+    const itemId = normalizeText(item && (item._id || item.id))
+    return itemId && itemId === candidateId
+  }) || null
+}
+
+function buildRegionText(item = {}, candidate = {}) {
+  return normalizeText(candidate.region)
+    || normalizeText(item.locationName)
+    || normalizeText(item.locationText)
+    || [item.province, item.city, item.district].filter(Boolean).join(" · ")
+    || "待补充"
+}
+
+function buildTravelCompanionText(taskState = {}) {
+  const collected = taskState && taskState.collected ? taskState.collected : {}
+  const peopleCount = normalizeText(collected.peopleCount)
+  const relationship = normalizeText(collected.relationship)
+  if (peopleCount && relationship) return `${peopleCount}·${relationship}`
+  return peopleCount || relationship || ""
+}
+
+function buildGuideFocusItems(candidate = {}, item = {}, type = "") {
+  const candidateHighlights = normalizeArray(candidate.highlights)
+    .concat(normalizeArray(candidate.playItems))
+    .concat(normalizeArray(candidate.tags))
+
+  let localHighlights = []
+  if (type === "activity") {
+    localHighlights = normalizeArray(item.highlights)
+      .concat(normalizeArray(item.itinerary))
+      .concat(normalizeArray(item.playTags))
+      .concat(normalizeArray(item.suitableGroups))
+  } else if (type === "scenic") {
+    localHighlights = normalizeArray(item.highlights)
+      .concat(normalizeArray(item.playTags))
+      .concat(normalizeArray(item.tags))
+  } else if (type === "product") {
+    localHighlights = normalizeArray(item.highlights)
+      .concat(normalizeArray(item.categoryTags))
+      .concat(normalizeArray(item.tags))
+  } else if (type === "hotel") {
+    localHighlights = normalizeArray(item.highlights)
+      .concat(normalizeArray(item.facilities))
+      .concat(normalizeArray(item.roomTypes))
+      .concat(normalizeArray(item.suitableGroups))
+  }
+
+  return uniqueList(candidateHighlights.concat(localHighlights)).slice(0, 4)
+}
+
+function buildGuidePracticalInfo(candidate = {}, item = {}, taskState = {}, type = "") {
+  const companionText = buildTravelCompanionText(taskState)
+  const regionText = buildRegionText(item, candidate)
+  const priceText = normalizeText(candidate.priceText)
+    || (item.price ? `楼${item.price}` : "")
+    || (item.priceFrom ? "¥" + item.priceFrom + "起" : "")
+  const list = []
+
+  if (regionText) {
+    list.push({ label: "所在区域", value: regionText })
+  }
+
+  if (companionText) {
+    list.push({ label: "同行场景", value: companionText })
+  }
+
+  if (type === "activity") {
+    list.push({ label: "出行参考", value: normalizeText(item.transport) || "以商家最新安排为准" })
+    if (priceText) list.push({ label: "参考价格", value: priceText })
+    return list.slice(0, 3)
+  }
+
+  if (type === "scenic") {
+    list.push({ label: "开放时间", value: normalizeText(item.openTime) || "以现场公示为准" })
+    if (priceText) list.push({ label: "门票参考", value: priceText })
+    return list.slice(0, 3)
+  }
+
+  if (type === "product") {
+    if (priceText) list.push({ label: "参考价格", value: priceText })
+    list.push({ label: "适合场景", value: companionText || "伴手礼/自用" })
+    return list.slice(0, 3)
+  }
+
+  if (type === "hotel") {
+    list.push({ label: "位置参考", value: normalizeText(item.address) || regionText })
+    if (priceText) list.push({ label: "参考价格", value: priceText })
+    return list.slice(0, 3)
+  }
+
+  if (priceText) {
+    list.push({ label: "参考价格", value: priceText })
+  }
+
+  return list.slice(0, 3)
 }
 
 function readCollectedText(collected = {}, keys = []) {
@@ -372,22 +652,22 @@ function classifyFeedbackType(text = "") {
   const source = normalizeText(text)
   if (!source) return ""
   if (/(建议|希望|能不能|可不可以|改进)/u.test(source)) return "platform_suggestion"
-  if (/(难用|卡|bug|闪退|进不去|加载慢|失败)/u.test(source)) return "product_feedback"
-  if (/(烦|难受|委屈|伤心|emo|崩溃|累)/u.test(source)) return "emotion_support"
+  if (/(难用|卡顿|bug|闪退|进不去|加载慢|失败)/u.test(source)) return "product_feedback"
+  if (/(难受|委屈|伤心|emo|崩溃|累)/u.test(source)) return "emotion_support"
   return "experience_complaint"
 }
 
 function buildSkillOpeningQuestion(skillMode = "") {
   if (skillMode === "guide_customization") {
-    return "用户刚进入了“攻略定制”技能。请你先热情问候，再用自然聊天的语气引导用户逐步补充行程信息。不要一上来就长篇推荐，也不要像表单一样连续盘问。你要优先收集并梳理这些关键信息：出发日期和天数、人数、人物关系、出发地、目的地、途径地、出行方式、预算。如果用户暂时不确定某一项，你要主动给出合理默认并继续推进。等信息足够后，再结合季节、天气、温度、旺季淡季和平台内容给出建议。第一轮只问当前最必要的一个问题。"
+    return "用户刚进入了攻略定制技能。请先热情问候，再自然引导用户逐步补充行程信息。第一轮只问当前最必要的一个问题。"
   }
 
   if (skillMode === "buddy_matching") {
-    return "用户刚进入了“找搭子”技能。请你先以“小禾”的身份主动发出一条自然的开场引导，不要直接给推荐结果，也不要照搬固定模板。开场可以根据用户最近对话里流露的情绪、当前定位、天气或时令变化自然调整语气，但核心目标不变：先引导用户说清这次想去哪、什么时候出发、希望和什么样的人同行。第一轮只问当前最必要的一个问题，不要把对话做成表单，也不要连续追问多项。等用户回答后，再进入筛选搭子候选。"
+    return "用户刚进入了找搭子技能。请先以小禾的身份自然开场，引导用户说清这次想去哪、什么时候出发、希望和什么样的人同行。第一轮只问当前最必要的一个问题。"
   }
 
   if (skillMode === "xiaohe_feedback") {
-    return "用户刚进入了“小禾树洞”技能。请你以小禾的口吻主动开始对话，先邀请用户说出最想反馈的内容，再根据对方表达自然追问必要细节。语气要真诚，不要像在填表。"
+    return "用户刚进入了小禾树洞技能。请先邀请用户说出最想反馈的内容，再根据表达自然追问必要细节。"
   }
 
   return ""
@@ -407,191 +687,11 @@ function toAgentHistory(messages = []) {
     .slice(-12)
 }
 
-function detectRecommendationType(question = "") {
-  const text = normalizeText(question)
-  if (!text) return ""
-
-  if (/(特产|美食|礼盒|伴手礼|带走|乡味|手作)/u.test(text)) return "product"
-  if (/(景点|景区|风景|打卡|拍照|观光|花海|草原|古村|漫游|牧场)/u.test(text)) return "scenic"
-  if (/(活动|农旅|采摘|研学|亲子|周末|农场|体验)/u.test(text)) return "activity"
-
-  return ""
-}
-
-function buildIntentTokensByType(question = "", type = "") {
-  const source = normalizeText(question)
-  const keywordMap = {
-    activity: ["亲子", "农旅", "采摘", "研学", "周末", "农场", "手作", "萌宠", "草莓"],
-    scenic: ["景点", "打卡", "拍照", "古村", "花海", "草原", "漫游", "观光", "田园"],
-    product: ["特产", "伴手礼", "礼盒", "美食", "乡味", "手作", "健康", "杂粮", "鲜果"]
-  }
-
-  return uniqueList((keywordMap[type] || []).filter((keyword) => source.includes(keyword)))
-}
-
-function buildLocationTokens(location = {}) {
-  return uniqueList([
-    trimRegionSuffix(location.province),
-    trimRegionSuffix(location.city),
-    trimRegionSuffix(location.district),
-    trimRegionSuffix(location.displayName),
-    trimRegionSuffix(location.locationText)
-  ].filter(Boolean))
-}
-
-function joinActivitySearchText(item = {}) {
-  return normalizeTextLower([
-    item.title,
-    item.summary,
-    item.content,
-    item.detail,
-    item.locationName,
-    item.province,
-    item.city,
-    item.district,
-    item.transport,
-    item.stay
-  ]
-    .concat(normalizeArray(item.tags))
-    .concat(normalizeArray(item.travelModeTags))
-    .concat(normalizeArray(item.playTags))
-    .concat(normalizeArray(item.suitableGroups))
-    .concat(normalizeArray(item.highlights))
-    .concat(normalizeArray(item.itinerary))
-    .join(" "))
-}
-
-function joinScenicSearchText(item = {}) {
-  return normalizeTextLower([
-    item.title,
-    item.locationName,
-    item.summary,
-    item.content,
-    item.detail,
-    item.province,
-    item.city,
-    item.district,
-    item.tips,
-    item.openTime
-  ]
-    .concat(normalizeArray(item.tags))
-    .concat(normalizeArray(item.playTags))
-    .concat(normalizeArray(item.suitableGroups))
-    .concat(normalizeArray(item.highlights))
-    .join(" "))
-}
-
-function joinProductSearchText(item = {}) {
-  return normalizeTextLower([
-    item.title,
-    item.locationName,
-    item.summary,
-    item.content,
-    item.detail,
-    item.province,
-    item.city,
-    item.district
-  ]
-    .concat(normalizeArray(item.tags))
-    .concat(normalizeArray(item.categoryTags))
-    .concat(normalizeArray(item.highlights))
-    .concat(normalizeArray(item.suitableGroups))
-    .join(" "))
-}
-
-function scoreByQuestion(text, question = "", location = {}, type = "") {
-  const intentTokens = buildIntentTokensByType(question, type)
-  const locationTokens = buildLocationTokens(location)
-  let score = 0
-
-  intentTokens.forEach((token) => {
-    if (text.includes(normalizeTextLower(token))) {
-      score += 12
-    }
-  })
-
-  locationTokens.forEach((token, index) => {
-    if (token && text.includes(normalizeTextLower(token))) {
-      score += 16 - Math.min(index * 2, 8)
-    }
-  })
-
-  if (/(附近|周边)/u.test(normalizeText(question)) && !locationTokens.length) {
-    score -= 4
-  }
-
-  return score
-}
-
-function getActivityPlayItems(item = {}) {
-  return uniqueList(
-    normalizeArray(item.highlights)
-      .concat(normalizeArray(item.itinerary))
-      .concat(normalizeArray(item.playTags))
-      .concat(normalizeArray(item.suitableGroups))
-  ).slice(0, 4)
-}
-
-function getActivityPracticalInfo(item = {}) {
-  const addressText = normalizeText(
-    item.locationName || [item.province, item.city, item.district].filter(Boolean).join(" · ")
-  ) || "待补充"
-  const phoneText = normalizeText(item.merchantPhone || item.contactPhone || item.phone || item.tel) || "待咨询"
-
-  return [
-    { label: "地址", value: addressText },
-    { label: "电话", value: phoneText }
-  ]
-}
-
-function getScenicPlayItems(item = {}) {
-  return uniqueList(
-    normalizeArray(item.highlights)
-      .concat(normalizeArray(item.playTags))
-      .concat(normalizeArray(item.suitableGroups))
-  ).slice(0, 4)
-}
-
-function getScenicPracticalInfo(item = {}) {
-  const addressText = normalizeText(
-    item.locationName || [item.province, item.city, item.district].filter(Boolean).join(" · ")
-  ) || "待补充"
-  const openTimeText = normalizeText(item.openTime) || "以现场公示为准"
-
-  return [
-    { label: "地址", value: addressText },
-    { label: "开放时间", value: openTimeText }
-  ]
-}
-
-function getProductPlayItems(item = {}) {
-  return uniqueList(
-    normalizeArray(item.highlights)
-      .concat(normalizeArray(item.categoryTags))
-      .concat(normalizeArray(item.tags))
-      .concat(normalizeArray(item.suitableGroups))
-  ).slice(0, 4)
-}
-
-function getProductPracticalInfo(item = {}) {
-  const originText = normalizeText(
-    item.locationName || [item.province, item.city, item.district].filter(Boolean).join(" · ")
-  ) || "待补充"
-  const priceText = item.price
-    ? `¥${item.price}`
-    : (item.priceFrom ? `¥${item.priceFrom}起` : "价格待定")
-
-  return [
-    { label: "产地", value: originText },
-    { label: "参考价格", value: priceText }
-  ]
-}
-
 function buildBuddyPromptSummary(question = "", userInfo = {}) {
   const dnaTags = normalizeArray(userInfo.dnaTags).slice(0, 3)
-  const profileText = dnaTags.length ? `，也会参考你的偏好标签“${dnaTags.join("、")}”` : ""
+  const profileText = dnaTags.length ? "，也会参考你的偏好标签 " + dnaTags.join("、") : ""
   const questionText = normalizeText(question) || "你当前的同行需求"
-  return `小禾根据“${questionText}”${profileText}，先帮你筛到这几位更值得进一步联系的搭子候选。`
+  return "小禾根据 " + questionText + profileText + "，先帮你筛到这几位更值得进一步联系的搭子候选。"
 }
 
 Page({
@@ -599,7 +699,7 @@ Page({
     statusBarHeight: 20,
     text: {
       brand: "问小禾",
-      fallbackQuestion: "附近有哪些适合周末放松的去处？",
+      fallbackQuestion: "闄勮繎鏈夊摢浜涢€傚悎鍛ㄦ湯鏀炬澗鐨勫幓澶勶紵",
       inputPlaceholder: "发消息，告诉小禾你想了解什么"
     },
     source: "search_input",
@@ -886,7 +986,7 @@ Page({
           distance: "near"
         }
       })
-      this.appendAiMessage("记下了。接下来小禾会优先帮你关注更近一些、出行更轻松的选择。")
+      this.appendAiMessage("记下了。接下来小禾会优先帮你关注更近一点、出行更轻松的选择。")
       return
     }
 
@@ -901,7 +1001,7 @@ Page({
       return
     }
 
-    if (/^(详细一点|更详细一点|具体一点|说具体点|展开讲讲|讲详细点|再详细点)$/u.test(normalizedValue)) {
+    if (/^(璇︾粏涓€鐐箌鏇磋缁嗕竴鐐箌鍏蜂綋涓€鐐箌璇村叿浣撶偣|灞曞紑璁茶|璁茶缁嗙偣|鍐嶈缁嗙偣)$/u.test(normalizedValue)) {
       this.setData({
         genericPreferences: {
           ...this.data.genericPreferences,
@@ -984,25 +1084,26 @@ Page({
 
     this.setData({ isAiLoading: true })
     const aiMessageId = this.appendAiPlaceholder()
-    const recommendationType = detectRecommendationType(question)
     const latestLocation = await this.ensureFreshLocationContext()
-    const nextTaskState = this.updateCurrentTaskState(question, latestLocation)
+    const currentTaskState = this.data.currentTaskState || createInitialTaskState(this.data.skillMode)
     const contextPayload = {
       ...(options.contextPayload || {}),
       location: latestLocation,
-      currentTaskState: nextTaskState,
+      currentTaskState,
       skillContext: {
         ...this.getCurrentSkillContext(options.contextPayload && options.contextPayload.skillContext),
         collected: {
-          ...(nextTaskState.collected || {})
+          ...(currentTaskState.collected || {})
         }
       }
     }
-    const shouldRenderStructuredAnswer = !!recommendationType && !nextTaskState.mainline
     this.startLoadingAnimation(aiMessageId)
 
     try {
-      const groundedUiPromise = this.buildGroundedRecommendationUi(question, contextPayload)
+      const conversationStatePromise = this.fetchConversationState(question, contextPayload).catch((error) => {
+        console.warn("[askXiaoheChat] fetch conversation state failed", error)
+        return null
+      })
       const res = await wx.cloud.extend.AI.bot.sendMessage({
         data: {
           botId: yuxiaoheBotId,
@@ -1015,20 +1116,55 @@ Page({
       let answer = ""
       for await (const chunk of res.textStream) {
         answer += chunk
-        if (!shouldRenderStructuredAnswer) {
-          this.stopLoadingAnimation()
-          this.updateMessageById(aiMessageId, {
-            text: answer
-          })
-        }
+        this.stopLoadingAnimation()
+        this.updateMessageById(aiMessageId, {
+          text: answer
+        })
       }
 
-      const groundedUi = await groundedUiPromise
-      if (shouldRenderStructuredAnswer && groundedUi.recommendations && groundedUi.recommendations.length) {
+      const conversationState = await conversationStatePromise
+      if (conversationState) {
+        const nextTaskState = buildTaskStateFromBackend(conversationState, currentTaskState)
+        this.setData({ currentTaskState: nextTaskState })
+      }
+
+      const taskStateFromBackend = buildTaskStateFromBackend(conversationState, currentTaskState)
+      const recommendations =
+        conversationState && conversationState.mainline === "buddy_matching"
+          ? this.buildBuddyRecommendations(conversationState && conversationState.candidates, taskStateFromBackend)
+          : await this.buildGuideRecommendations(
+              conversationState && conversationState.candidates,
+              taskStateFromBackend
+            )
+
+      if (
+        conversationState &&
+        conversationState.mainline === "guide_customization" &&
+        recommendations.length
+      ) {
         this.updateMessageById(aiMessageId, {
-          text: groundedUi.introText || "",
-          recommendations: groundedUi.recommendations || [],
-          tips: groundedUi.tips || "",
+          text: buildGuideCardIntro(taskStateFromBackend),
+          recommendations,
+          tips: buildGuideWarmTips(taskStateFromBackend),
+          guessQuestions: [],
+          followUp: ""
+        })
+        return
+      }
+
+      if (
+        conversationState &&
+        conversationState.mainline === "buddy_matching" &&
+        recommendations.length
+      ) {
+        this.updateMessageById(aiMessageId, {
+          text: buildBuddyPromptSummary(question),
+          recommendations,
+          tips: [
+            "小禾提醒你",
+            "1. 先确认出发时间和集合区域，再决定要不要继续聊。",
+            "2. 当前展示的是后端统一返回的真实同行候选卡片。"
+          ].join("\n"),
           guessQuestions: [],
           followUp: ""
         })
@@ -1155,11 +1291,11 @@ Page({
       currentTaskState,
       history: (this.data.messages || [])
         .map((item) => ({
-          role: item.role,
+          role: item.role === "ai" ? "assistant" : item.role,
           text: item.text
         }))
         .filter((item) => item.role && item.text)
-        .slice(-8),
+        .slice(-20),
       context: {
         source: this.data.source || "search_input"
       },
@@ -1199,211 +1335,173 @@ Page({
     }
   },
 
-  async buildGroundedRecommendationUi(question, extraPayload = {}) {
-    const recommendationType = detectRecommendationType(question)
-    if (!recommendationType) {
-      return {
-        introText: "",
-        recommendations: [],
-        tips: ""
-      }
-    }
-
-    if (recommendationType === "activity") {
-      return this.buildGroundedActivityUi(question, extraPayload)
-    }
-
-    if (recommendationType === "scenic") {
-      return this.buildGroundedScenicUi(question, extraPayload)
-    }
-
-    return this.buildGroundedProductUi(question, extraPayload)
-  },
-
-  async buildGroundedActivityUi(question, extraPayload = {}) {
-    const payload = this.buildGenericPayload(question, extraPayload)
-    const location = payload.location || {}
-    const list = await this.fetchActivitiesForChat()
-    const rankedList = list
-      .map((item) => ({ item, score: scoreByQuestion(joinActivitySearchText(item), question, location, "activity") }))
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-
-    const recommendations = await Promise.all(
-      rankedList.map(async ({ item }) => {
-        const coverTagInfo = buildActivityCoverTags(item)
-        const playItems = getActivityPlayItems(item)
-        const gallery = await resolveActivityGallery(item)
-
-        return {
-          id: normalizeText(item._id || item.id),
-          sourceId: normalizeText(item._id || item.id),
-          type: "activity",
-          title: normalizeText(item.title) || "农旅活动",
-          summary: normalizeText(item.summary || item.content || item.detail) || "暂时还没有更详细的介绍。",
-          gallery: Array.isArray(gallery) ? gallery.filter(Boolean).slice(0, 2) : [],
-          tags: coverTagInfo.combinedTags.slice(0, 4),
-          playItems: playItems.length ? playItems : ["活动亮点待补充"],
-          practicalInfo: getActivityPracticalInfo(item),
-          cover: await resolveActivityCover(item)
-        }
-      })
-    )
-
-    return {
-      introText: recommendations.length ? "小禾结合你当前的位置和平台内容，为你整理了这些更值得关注的农旅活动：" : "",
-      recommendations,
-      tips: recommendations.length
-        ? [
-            "小禾提醒你",
-            "1. 出行前建议先确认最新开放情况和可体验项目。",
-            "2. 参与亲子或户外活动时，记得提前做好防晒、防蚊和补水准备。"
-          ].join("\n")
-        : ""
+  async fetchHotelsForChat() {
+    try {
+      const db = wx.cloud.database()
+      const res = await db.collection("hotels").get()
+      return Array.isArray(res && res.data) ? res.data : []
+    } catch (error) {
+      console.error("[askXiaoheChat] fetch hotels failed", error)
+      return []
     }
   },
 
-  async buildGroundedScenicUi(question, extraPayload = {}) {
-    const payload = this.buildGenericPayload(question, extraPayload)
-    const location = payload.location || {}
-    const list = await this.fetchScenicsForChat()
-    const rankedList = list
-      .map((item) => ({ item, score: scoreByQuestion(joinScenicSearchText(item), question, location, "scenic") }))
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-
-    const recommendations = rankedList.map(({ item }) => {
-      const cover = normalizeText(item.cover) || DEFAULT_ACTIVITY_COVER
-      const gallery = Array.isArray(item.gallery) && item.gallery.length
-        ? item.gallery.filter(Boolean).slice(0, 2)
-        : [cover]
-      const playItems = getScenicPlayItems(item)
-
-      return {
-        id: normalizeText(item._id || item.id),
-        sourceId: normalizeText(item._id || item.id),
-        type: "scenic",
-        title: normalizeText(item.locationName || item.title) || "乡村景点",
-        summary: normalizeText(item.summary || item.content || item.detail) || "暂时还没有更详细的介绍。",
-        gallery,
-        tags: uniqueList(normalizeArray(item.playTags).concat(normalizeArray(item.tags))).slice(0, 4),
-        playItems: playItems.length ? playItems : ["游玩亮点待补充"],
-        practicalInfo: getScenicPracticalInfo(item),
-        cover
-      }
-    })
-
-    return {
-      introText: recommendations.length ? "小禾结合你当前的位置和平台内容，为你整理了这些值得去看看的乡村景点：" : "",
-      recommendations,
-      tips: recommendations.length
-        ? [
-            "小禾提醒你",
-            "1. 出行前建议先确认天气、开放时间和停车条件。",
-            "2. 如果这次主要是拍照打卡，尽量选择光线更稳定的时段前往。"
-          ].join("\n")
-        : ""
-    }
-  },
-
-  async buildGroundedProductUi(question, extraPayload = {}) {
-    const payload = this.buildGenericPayload(question, extraPayload)
-    const location = payload.location || {}
-    const list = await this.fetchProductsForChat()
-    const rankedList = list
-      .map((item) => ({ item, score: scoreByQuestion(joinProductSearchText(item), question, location, "product") }))
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
-
-    const recommendations = rankedList.map(({ item }) => {
-      const cover = normalizeText(item.cover) || DEFAULT_PRODUCT_COVER
-      const playItems = getProductPlayItems(item)
-
-      return {
-        id: normalizeText(item._id || item.id),
-        sourceId: normalizeText(item._id || item.id),
-        type: "product",
-        title: normalizeText(item.title) || "乡味特产",
-        summary: normalizeText(item.summary || item.content || item.detail) || "暂时还没有更详细的介绍。",
-        gallery: [cover],
-        tags: uniqueList(normalizeArray(item.categoryTags).concat(normalizeArray(item.tags))).slice(0, 4),
-        playItems: playItems.length ? playItems : ["选购亮点待补充"],
-        practicalInfo: getProductPracticalInfo(item),
-        cover
-      }
-    })
-
-    return {
-      introText: recommendations.length ? "小禾结合你当前的位置和平台内容，为你整理了这些值得带走的乡味特产：" : "",
-      recommendations,
-      tips: recommendations.length
-        ? [
-            "小禾提醒你",
-            "1. 送礼或远途携带时，优先选择礼盒、干货或真空包装产品。",
-            "2. 生鲜和现做类商品记得留意保质期与便携性。"
-          ].join("\n")
-        : ""
-    }
-  },
-
-  async requestBuddyMatches(question) {
-    if (!ensureBuddySession()) {
-      return
-    }
-
+  async fetchConversationState(question, contextPayload = {}) {
     const app = getApp()
-    let userInfo = {}
-    try {
-      userInfo = (app && typeof app.getUserInfo === "function" && app.getUserInfo()) || {}
-    } catch (error) {
-      userInfo = {}
+    const genericPayload = this.buildGenericPayload(question, contextPayload)
+    const userInfo = (app && typeof app.getUserInfo === "function" && app.getUserInfo()) || {}
+    const cloudbaseUserId = normalizeText(userInfo && userInfo.openid)
+    const payload = {
+      location: genericPayload.location || {},
+      currentTaskState: genericPayload.currentTaskState || {},
+      history: Array.isArray(genericPayload.history) ? genericPayload.history.slice(-20) : []
     }
 
-    try {
-      const result = await wx.cloud.callFunction({
-        name: "userManage",
-        data: {
-          action: "getBuddyMatches",
-          payload: {
-            question: normalizeText(question) || DEFAULT_BUDDY_TAGS.join(" "),
-            limit: 3
-          }
-        }
-      })
+    const result = await requestAgentHttp({
+      path: "/api/conversation-state",
+      method: "POST",
+      data: {
+        question,
+        contextPayload: payload,
+        cloudbaseUserId
+      }
+    })
 
-      const recommendations = Array.isArray(result?.result?.list)
-        ? result.result.list.map((item) => ({
-            ...normalizeBuddyRecommendation(item),
-            type: "buddy",
-            title: item.userName,
-          }))
-        : []
+    return result && result.data ? result.data : result
+  },
 
-      if (!recommendations.length) {
-        this.appendAiMessage("小禾暂时还没有筛到合适的真实搭子候选。等更多用户完成资料和 DNA 标签后，这里会更准确。", {
-          channelLabel: "找搭子"
-        })
-        return
+  async buildActivityRecommendationCard(candidate = {}, item = {}, taskState = {}) {
+    const coverTagInfo = buildActivityCoverTags(item)
+    const cover = await resolveActivityCover(item)
+    const gallery = await resolveActivityGallery(item)
+
+    return {
+      id: `${normalizeText(candidate.type)}-${normalizeText(candidate.id)}`,
+      sourceId: normalizeText(item._id || item.id || candidate.id),
+      type: "activity",
+      title: normalizeText(candidate.title) || normalizeText(item.title) || "鍐滄梾娲诲姩",
+      summary: normalizeText(candidate.summary) || normalizeText(item.summary || item.content || item.detail) || "小禾先帮你筛出了一个适合继续了解的农旅活动。",
+      gallery: Array.isArray(gallery) ? gallery.filter(Boolean).slice(0, 2) : [],
+      tags: uniqueList(normalizeArray(candidate.tags).concat(coverTagInfo.combinedTags || [])).slice(0, 4),
+      playItems: buildGuideFocusItems(candidate, item, "activity"),
+      practicalInfo: buildGuidePracticalInfo(candidate, item, taskState, "activity"),
+      cover
+    }
+  },
+
+  async buildScenicRecommendationCard(candidate = {}, item = {}, taskState = {}) {
+    const cover = await resolveMediaSource(item.cover, DEFAULT_ACTIVITY_COVER)
+    const gallery = await resolveMediaList(item.gallery || [], cover)
+
+    return {
+      id: `${normalizeText(candidate.type)}-${normalizeText(candidate.id)}`,
+      sourceId: normalizeText(item._id || item.id || candidate.id),
+      type: "scenic",
+      title: normalizeText(candidate.title) || normalizeText(item.title) || "涔℃潙鏅偣",
+      summary: normalizeText(candidate.summary) || normalizeText(item.summary || item.content) || "小禾先帮你筛出了一个适合继续了解的景点。",
+      gallery: Array.isArray(gallery) ? gallery.filter(Boolean).slice(0, 2) : [],
+      tags: uniqueList(normalizeArray(candidate.tags).concat(normalizeArray(item.playTags)).concat(normalizeArray(item.tags))).slice(0, 4),
+      playItems: buildGuideFocusItems(candidate, item, "scenic"),
+      practicalInfo: buildGuidePracticalInfo(candidate, item, taskState, "scenic"),
+      cover
+    }
+  },
+
+  async buildProductRecommendationCard(candidate = {}, item = {}, taskState = {}) {
+    const cover = await resolveMediaSource(item.cover, DEFAULT_PRODUCT_COVER)
+    const gallery = await resolveMediaList(item.gallery || [], cover)
+
+    return {
+      id: `${normalizeText(candidate.type)}-${normalizeText(candidate.id)}`,
+      sourceId: normalizeText(item._id || item.id || candidate.id),
+      type: "product",
+      title: normalizeText(candidate.title) || normalizeText(item.title) || "涔″懗鐗逛骇",
+      summary: normalizeText(candidate.summary) || normalizeText(item.summary || item.content) || "小禾先帮你筛出了一个适合继续了解的本地好物。",
+      gallery: Array.isArray(gallery) ? gallery.filter(Boolean).slice(0, 2) : [],
+      tags: uniqueList(normalizeArray(candidate.tags).concat(normalizeArray(item.categoryTags)).concat(normalizeArray(item.tags))).slice(0, 4),
+      playItems: buildGuideFocusItems(candidate, item, "product"),
+      practicalInfo: buildGuidePracticalInfo(candidate, item, taskState, "product"),
+      cover
+    }
+  },
+
+  async buildHotelRecommendationCard(candidate = {}, item = {}, taskState = {}) {
+    const cover = await resolveMediaSource(item.cover, DEFAULT_ACTIVITY_COVER)
+    const gallery = await resolveMediaList(item.gallery || [], cover)
+
+    return {
+      id: `${normalizeText(candidate.type)}-${normalizeText(candidate.id)}`,
+      sourceId: normalizeText(item._id || item.id || candidate.id),
+      type: "hotel",
+      title: normalizeText(candidate.title) || normalizeText(item.name || item.title) || "閰掑簵姘戝",
+      summary: normalizeText(candidate.summary) || normalizeText(item.summary || item.description || item.desc) || "小禾先帮你筛出了一个适合继续了解的住宿选项。",
+      gallery: Array.isArray(gallery) ? gallery.filter(Boolean).slice(0, 2) : [],
+      tags: uniqueList(normalizeArray(candidate.tags).concat(normalizeArray(item.tags))).slice(0, 4),
+      playItems: buildGuideFocusItems(candidate, item, "hotel"),
+      practicalInfo: buildGuidePracticalInfo(candidate, item, taskState, "hotel"),
+      cover
+    }
+  },
+
+  async buildGuideRecommendations(candidates = [], taskState = {}) {
+    const normalizedCandidates = Array.isArray(candidates) ? candidates : []
+    if (!normalizedCandidates.length) return []
+
+    const [activities, scenics, products, hotels] = await Promise.all([
+      this.fetchActivitiesForChat(),
+      this.fetchScenicsForChat(),
+      this.fetchProductsForChat(),
+      this.fetchHotelsForChat()
+    ])
+
+    const cards = await Promise.all(normalizedCandidates.map(async (candidate) => {
+      const type = normalizeText(candidate.type)
+
+      if (type === "activity") {
+        const item = findRecordByCandidateId(activities, candidate)
+        if (item) return this.buildActivityRecommendationCard(candidate, item, taskState)
       }
 
-      this.appendAiMessage(buildBuddyPromptSummary(question, userInfo), {
-        recommendations,
-        tips: [
-          "小禾提醒你",
-          "1. 先确认出发时间和集合区域，再决定要不要继续聊。",
-          "2. 目前展示的是基于真实资料算出的候选，只展示必要字段。"
-        ].join("\n"),
-        channelLabel: "找搭子"
-      })
-    } catch (error) {
-      console.error("[askXiaoheChat] get buddy matches failed", error)
-      this.appendAiMessage("小禾这会儿还没拿到可用的搭子候选，你可以稍后再试。", {
-        channelLabel: "找搭子"
-      })
-    }
+      if (type === "scenic") {
+        const item = findRecordByCandidateId(scenics, candidate)
+        if (item) return this.buildScenicRecommendationCard(candidate, item, taskState)
+      }
+
+      if (type === "product") {
+        const item = findRecordByCandidateId(products, candidate)
+        if (item) return this.buildProductRecommendationCard(candidate, item, taskState)
+      }
+
+      if (type === "hotel") {
+        const item = findRecordByCandidateId(hotels, candidate)
+        if (item) return this.buildHotelRecommendationCard(candidate, item, taskState)
+      }
+
+      return null
+    }))
+
+    return cards.filter(Boolean)
+  },
+
+  buildBuddyRecommendations(candidates = [], taskState = {}) {
+    const normalizedCandidates = Array.isArray(candidates) ? candidates : []
+    if (!normalizedCandidates.length) return []
+
+    return normalizedCandidates
+      .map((candidate) => normalizeBuddyRecommendation({
+        id: normalizeText(candidate.id),
+        type: "buddy",
+        title: normalizeText(candidate.nickname || candidate.title) || "搭子候选",
+        summary: normalizeText(candidate.summary),
+        matchReason: normalizeText(candidate.matchReason),
+        tags: normalizeArray(candidate.tags),
+        region: normalizeText(candidate.region),
+        score: Number(candidate.score || 0),
+        nickname: normalizeText(candidate.nickname),
+        playItems: [],
+        practicalInfo: []
+      }, taskState))
+      .filter(Boolean)
   },
 
   applyBuddyMatch(e) {
@@ -1411,7 +1509,7 @@ Page({
     const userName = normalizeText(dataset.username)
     const openingText = normalizeText(dataset.opening)
     if (!userName || !openingText) {
-      wx.showToast({ title: "这位搭子的信息还没准备好", icon: "none" })
+      wx.showToast({ title: "杩欎綅鎼瓙鐨勪俊鎭繕娌″噯澶囧ソ", icon: "none" })
       return
     }
 
@@ -1427,7 +1525,7 @@ Page({
     })
 
     if (!application || !application.id) {
-      wx.showToast({ title: "发起申请失败", icon: "none" })
+      wx.showToast({ title: "鍙戣捣鐢宠澶辫触", icon: "none" })
       return
     }
 
@@ -1457,3 +1555,5 @@ Page({
     wx.navigateTo({ url: targetUrl })
   }
 })
+
+

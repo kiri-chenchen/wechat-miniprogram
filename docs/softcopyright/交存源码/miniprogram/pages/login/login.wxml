@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="ambient ambientLeft"></view>
+  <view class="ambient ambientRight"></view>
+  <view class="grain"></view>
+
+  <view class="content">
+    <view class="brandBlock">
+      <image class="brandAvatar" src="/images/login-brand.png" mode="aspectFill"></image>
+      <view class="brandName">{{text.brandName}}</view>
+      <view class="brandTagline">{{text.tagline}}</view>
+    </view>
+
+    <view class="heroBlock">
+      <view class="heroTitle">{{text.titleWechat}}</view>
+      <view class="heroDesc">{{text.descBeforeLogin}}</view>
+    </view>
+
+    <view class="formCard">
+      <view class="cardTop">
+        <view class="cardBadge">AgriTravel</view>
+        <view class="cardHint">{{text.heroTitle}}</view>
+      </view>
+
+      <button
+        class="primaryButton"
+        bindtap="onWechatLogin"
+        loading="{{loading}}"
+        disabled="{{loading}}"
+      >
+        {{text.btnWechatLogin}}
+      </button>
+
+      <view class="agreement">{{text.agreementSummary}}</view>
+    </view>
+  </view>
+
+  <view class="footer">{{text.footer}}</view>
+</view>

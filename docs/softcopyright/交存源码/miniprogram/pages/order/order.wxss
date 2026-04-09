@@ -1,0 +1,82 @@
+﻿.container{
+  padding:30rpx;
+  background:#f6faf4;
+  min-height:100vh;
+}
+
+.card{
+  background:#ffffff;
+  padding:30rpx;
+  border-radius:16rpx;
+  margin-bottom:30rpx;
+}
+
+.title{
+  font-weight:bold;
+  margin-bottom:20rpx;
+}
+
+.titleRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  margin:20rpx 0;
+}
+
+.inputRow{
+  display:flex;
+  align-items:center;
+  margin:20rpx 0;
+}
+
+.label{
+  width:150rpx;
+}
+
+.input{
+  flex:1;
+  border:1px solid #dbe8d7;
+  padding:10rpx;
+  border-radius:8rpx;
+}
+
+.textarea{
+  border:1px solid #dbe8d7;
+  border-radius:8rpx;
+  padding:20rpx;
+}
+
+.tip{
+  color:#99a598;
+  font-size:24rpx;
+  margin-bottom:10rpx;
+}
+
+.empty{
+  color:#99a598;
+}
+
+.travelerRow{
+  display:flex;
+  justify-content:space-between;
+  margin-top:20rpx;
+}
+
+.idno{
+  color:#667566;
+  font-size:24rpx;
+}
+
+.bottom{
+  padding:30rpx 0;
+}
+
+.submit{
+  background:#57984a;
+  color:white;
+}

@@ -1,0 +1,93 @@
+<view class="page" wx:if="{{detail}}">
+  <view class="heroWrap">
+    <swiper
+      class="heroSwiper"
+      indicator-dots="{{detail.gallery.length > 1}}"
+      indicator-color="rgba(255,255,255,0.42)"
+      indicator-active-color="#ffffff"
+      autoplay="{{detail.gallery.length > 1}}"
+      touchable="{{detail.gallery.length > 1}}"
+      interval="3200"
+      duration="500"
+      circular="{{detail.gallery.length > 1}}"
+    >
+      <swiper-item wx:for="{{detail.gallery}}" wx:key="*this">
+        <image class="hero" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewGallery" />
+      </swiper-item>
+    </swiper>
+    <view class="heroMask"></view>
+
+    <view class="customNav" style="padding-top: {{statusBarHeight}}px;">
+      <view class="backBtn" bindtap="goBack">
+        <view class="backArrow"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="content">
+    <view class="title">{{detail.title}}</view>
+    <view class="summary" wx:if="{{detail.summary}}">{{detail.summary}}</view>
+
+    <view class="tagWrap" wx:if="{{detail.tags.length}}">
+      <view class="tag" wx:for="{{detail.tags}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="infoGrid">
+      <view class="infoCard">
+        <view class="infoLabel">{{text.origin}}</view>
+        <view class="infoValue">{{detail.locationText}}</view>
+        <view class="infoSub" wx:if="{{detail.regionText}}">{{detail.regionText}}</view>
+      </view>
+      <view class="infoCard">
+        <view class="infoLabel">{{text.price}}</view>
+        <view class="infoValue priceText">{{detail.priceText}}</view>
+        <view class="infoSub">{{detail.soldText}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.highlights.length}}">
+      <view class="sectionTitle">{{text.highlights}}</view>
+      <view class="card">
+        <view class="bulletItem" wx:for="{{detail.highlights}}" wx:key="*this">
+          <view class="dot"></view>
+          <view class="bulletText">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.descriptionText}}">
+      <view class="sectionTitle">{{text.description}}</view>
+      <view class="card plainText">{{detail.descriptionText}}</view>
+    </view>
+
+    <view class="section" wx:if="{{detail.gallery.length}}">
+      <view class="sectionTitle">{{text.gallery}}</view>
+      <scroll-view class="galleryScroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <image
+          class="galleryImage"
+          wx:for="{{detail.gallery}}"
+          wx:key="*this"
+          src="{{item}}"
+          mode="aspectFill"
+          data-src="{{item}}"
+          bindtap="previewGallery"
+        />
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="bottomBar">
+    <view class="bottomMain">
+      <view class="priceBox">
+        <view class="priceLabel">{{text.price}}</view>
+        <view class="priceNum">{{detail.priceText}}</view>
+      </view>
+      <view class="favoriteBtn" bindtap="toggleFavorite">
+        <image class="favoriteIcon" src="{{favorited ? favoriteIconFilled : favoriteIcon}}" mode="aspectFit" />
+      </view>
+    </view>
+    <button class="buyBtn" bindtap="handleBuy">{{text.buyNow}}</button>
+  </view>
+</view>
+
+<view wx:else class="emptyState">{{text.empty}}</view>

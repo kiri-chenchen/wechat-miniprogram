@@ -4,8 +4,70 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const SCENIC_COVER = "/images/nav-academy.png"
+const SCENIC_CLOUD_PREFIX =
+  "cloud://cloud1-3ghmr5ki7b1172fe.636c-cloud1-3ghmr5ki7b1172fe-1403917845/scenics"
+
+function buildScenicCloudCover(seedKey) {
+  return `${SCENIC_CLOUD_PREFIX}/covers/${seedKey}.jpg`
+}
+
+function buildScenicCloudGallery(seedKey, count = 3) {
+  return Array.from({ length: count }, (_, index) =>
+    `${SCENIC_CLOUD_PREFIX}/gallery/${seedKey}-${index + 1}.jpg`
+  )
+}
 
 const scenics = [
+  {
+    seedKey: "lz-yingpanling-battle-site",
+    title: "营盘岭兰州解放战役遗址",
+    summary: "集战场遗址、陈列展和沉浸式体验于一体的兰州战役红色地标。",
+    content:
+      "营盘岭海拔2171米，是兰州东南方向的重要天然屏障。1949年兰州战役中，国民党马步芳部在此构筑钢筋水泥碉堡群、峭壁工事和战壕，形成易守难攻的核心防线。8月25日，第一野战军第6军发起总攻，最终攻克营盘岭，打开兰州南大门。现遗址保留碉堡、战壕等战斗痕迹，并以“遗址+场馆”联动方式开放展示，适合开展红色研学、爱国主义教育和城市记忆寻访。",
+    province: "甘肃省",
+    city: "兰州市",
+    district: "城关区",
+    locationName: "伏龙坪街道三营村营盘岭战斗遗址",
+    address: "甘肃省兰州市城关区伏龙坪街道三营村",
+    tags: ["红色景点", "兰州战役", "省级文保", "遗址"],
+    playTags: ["战场遗址探访", "红色研学", "VR沉浸体验", "纪念馆联动"],
+    suitableGroups: ["学生研学", "亲子家庭", "党建团建", "红色文化爱好者"],
+    priceFrom: 0,
+    openTime: "以现场开放安排为准",
+    highlights: [
+      "明代营盘遗址与兰州战役碉堡群叠合展示，历史层次鲜明",
+      "可实地看到钢筋水泥碉堡、战壕和曹德荣烈士牺牲地等遗迹",
+      "营盘岭战斗陈列展与VR体验馆联动，适合沉浸式了解战役经过"
+    ],
+    tips: "山地路段建议穿舒适防滑鞋，出发前先确认当日开放安排和天气情况。",
+    cover: buildScenicCloudCover("lz-yingpanling-battle-site"),
+    gallery: buildScenicCloudGallery("lz-yingpanling-battle-site", 3)
+  },
+  {
+    seedKey: "lz-eighth-route-army-office-memorial",
+    title: "八路军兰州办事处纪念馆",
+    summary: "兰州城市核心区内重要的抗战纪念馆，也是甘肃代表性的红色教育基地。",
+    content:
+      "八路军兰州办事处纪念馆由酒泉路314号旧址和甘南路700号旧址组成，前身为1937年设立的红军联络处，后更名为八路军驻甘办事处，至1943年撤回延安。这里曾承担营救西路军将士、转运援华物资、接待赴苏人员等重要任务，被周恩来誉为“革命的接待站，战斗的指挥所”。馆内保留谢觉哉、伍修权等办公生活原状陈列，并常设《热血陇原》《巍巍祁连》等专题展，是串联兰州近现代革命史的重要一站。",
+    province: "甘肃省",
+    city: "兰州市",
+    district: "城关区",
+    locationName: "八路军兰州办事处纪念馆（酒泉路旧址+甘南路旧址）",
+    address: "甘肃省兰州市城关区酒泉路314号、甘南路700号",
+    tags: ["红色景点", "抗战纪念馆", "全国重点文保", "教育基地"],
+    playTags: ["旧址参观", "专题展览", "原状陈列", "爱国主义教育"],
+    suitableGroups: ["学生研学", "亲子家庭", "党建团建", "历史文化爱好者"],
+    priceFrom: 0,
+    openTime: "以纪念馆公告为准",
+    highlights: [
+      "酒泉路旧址与甘南路旧址双点联动，可系统了解办事处历史",
+      "《热血陇原》《巍巍祁连》及烈士名录墙等展陈内容完整",
+      "谢觉哉、伍修权等办公生活原状陈列保留了真实年代感"
+    ],
+    tips: "建议预留半天时间串联两处旧址，参观前关注纪念馆开放公告和团队预约要求。",
+    cover: buildScenicCloudCover("lz-eighth-route-army-office-memorial"),
+    gallery: buildScenicCloudGallery("lz-eighth-route-army-office-memorial", 3)
+  },
   {
     seedKey: "lz-hekou-pear-blossom-scenic",
     title: "兰州河口古镇梨花漫游",

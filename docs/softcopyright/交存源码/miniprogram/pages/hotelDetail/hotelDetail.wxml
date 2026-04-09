@@ -1,0 +1,104 @@
+<view class="page" wx:if="{{detail}}">
+  <swiper
+    class="heroSwiper"
+    indicator-dots="{{detail.gallery.length > 1}}"
+    autoplay="{{detail.gallery.length > 1}}"
+    circular="{{detail.gallery.length > 1}}"
+    interval="4000"
+    duration="500"
+  >
+    <swiper-item wx:for="{{detail.gallery}}" wx:key="*this">
+      <image class="hero" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewGallery" />
+    </swiper-item>
+  </swiper>
+
+  <view class="content">
+    <view class="titleRow">
+      <view class="title">{{detail.name || detail.title}}</view>
+      <view class="titleMeta" wx:if="{{detail.titleScoreText}}">{{detail.titleScoreText}}</view>
+    </view>
+    <view class="summary" wx:if="{{detail.summary}}">{{detail.summary}}</view>
+
+    <view class="tagWrap" wx:if="{{detail.tags.length}}">
+      <view class="tag" wx:for="{{detail.tags}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="infoGrid">
+      <view class="infoCard">
+        <view class="infoLabel">{{text.location}}</view>
+        <view class="infoValue">{{detail.locationText}}</view>
+        <view class="infoSub" wx:if="{{detail.addressText}}">{{detail.addressText}}</view>
+        <view class="infoSub" wx:if="{{detail.regionText}}">{{detail.regionText}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.highlights.length}}">
+      <view class="sectionTitle">{{text.highlights}}</view>
+      <view class="card">
+        <view class="bulletItem" wx:for="{{detail.highlights}}" wx:key="*this">
+          <view class="dot"></view>
+          <view class="bulletText">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.facilities.length}}">
+      <view class="sectionTitle">{{text.facilities}}</view>
+      <view class="chipWrap">
+        <view class="chip" wx:for="{{detail.facilities}}" wx:key="*this">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.roomTypes.length}}">
+      <view class="sectionTitle">{{text.roomTypes}}</view>
+      <view class="card">
+        <view class="bulletItem" wx:for="{{detail.roomTypes}}" wx:key="*this">
+          <view class="dot"></view>
+          <view class="bulletText">{{item}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.suitableGroups.length}}">
+      <view class="sectionTitle">{{text.suitableGroups}}</view>
+      <view class="chipWrap">
+        <view class="chip soft" wx:for="{{detail.suitableGroups}}" wx:key="*this">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{detail.descriptionText}}">
+      <view class="sectionTitle">{{text.description}}</view>
+      <view class="card plainText">{{detail.descriptionText}}</view>
+    </view>
+
+    <view class="section" wx:if="{{detail.gallery.length}}">
+      <view class="sectionTitle">{{text.gallery}}</view>
+      <scroll-view class="galleryScroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <image
+          class="galleryImage"
+          wx:for="{{detail.gallery}}"
+          wx:key="*this"
+          src="{{item}}"
+          mode="aspectFill"
+          data-src="{{item}}"
+          bindtap="previewGallery"
+        />
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="bottomBar">
+    <view class="bottomMain">
+      <view class="priceBox">
+        <view class="priceLabel">{{text.price}}</view>
+        <view class="priceNum">{{detail.priceText}}</view>
+      </view>
+      <view class="favoriteBtn" bindtap="toggleFavorite">
+        <image class="favoriteIcon" src="{{favorited ? favoriteIconFilled : favoriteIcon}}" mode="aspectFit" />
+      </view>
+    </view>
+    <button class="actionBtn" bindtap="handleContact">{{text.bookNow}}</button>
+  </view>
+</view>
+
+<view wx:else class="emptyState">{{text.empty}}</view>

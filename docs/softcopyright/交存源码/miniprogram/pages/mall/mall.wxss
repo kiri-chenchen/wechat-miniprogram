@@ -1,0 +1,71 @@
+﻿.page{
+  min-height:100vh;
+  background:#f6faf4;
+  padding-bottom:30rpx;
+}
+
+.searchWrap{
+  padding:24rpx;
+  background:#ffffff;
+  margin-bottom: 20rpx;
+}
+
+.searchBox{
+  height:80rpx;
+  border-radius:999rpx;
+  background:#edf5ea;
+  color:#57984a;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 24rpx;
+  font-size:28rpx;
+  font-weight: 600;
+}
+
+.goodsList{
+  padding:0 24rpx;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+}
+
+.goodsCard{
+  width:48%;
+  background:#ffffff;
+  border-radius:22rpx;
+  overflow:hidden;
+  margin-bottom:20rpx;
+}
+
+.goodsImg{
+  width:100%;
+  height:260rpx;
+  display:block;
+}
+
+.goodsName{
+  font-size:28rpx;
+  color:#1f2a1f;
+  line-height:1.6;
+  padding:16rpx 16rpx 0;
+  min-height:90rpx;
+}
+
+.goodsBottom{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14rpx 16rpx 20rpx;
+}
+
+.goodsPrice{
+  color:#57984a;
+  font-size:32rpx;
+  font-weight:700;
+}
+
+.goodsSold{
+  color:#99a598;
+  font-size:22rpx;
+}

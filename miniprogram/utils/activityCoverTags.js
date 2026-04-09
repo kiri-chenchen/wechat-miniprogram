@@ -314,7 +314,6 @@ function mapSpecificTag(text) {
 function collectSpecificTags(activity, target, excludedList, max) {
   const candidates = normalizeList(activity.highlights)
     .concat([
-      normalizeText(activity.locationName),
       normalizeText(activity.title),
       normalizeText(activity.summary),
     ])

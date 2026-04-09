@@ -1,7 +1,9 @@
 .page { min-height: 100vh; background: #ffffff; }
 .topbar { display: flex; align-items: center; justify-content: flex-start; gap: 16rpx; padding: 0 24rpx 12rpx; background: #ffffff; }
 .icon-btn { width: 86rpx; height: 86rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48rpx; color: #1f1f1f; }
-.story-scroll { white-space: nowrap; padding: 8rpx 18rpx 20rpx; box-sizing: border-box; border-bottom: 1rpx solid #f1f1f1; }
+.storySection { border-bottom: 1rpx solid #f1f1f1; }
+.storySectionTitle { padding: 8rpx 24rpx 4rpx; font-size: 24rpx; color: #7f8a7f; }
+.story-scroll { white-space: nowrap; padding: 8rpx 18rpx 20rpx; box-sizing: border-box; }
 .story-item { width: 132rpx; display: inline-flex; flex-direction: column; align-items: center; margin: 0 10rpx; vertical-align: top; position: relative; }
 .story-avatar { position: relative; width: 108rpx; height: 108rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 40rpx; font-weight: 700; box-shadow: 0 10rpx 22rpx rgba(0, 0, 0, 0.08); }
 .image-avatar { overflow: visible; background: #f2f2f2; box-shadow: none; }
@@ -10,6 +12,7 @@
 .story-badge { position: absolute; top: -4rpx; right: 10rpx; min-width: 26rpx; height: 26rpx; padding: 0 6rpx; border-radius: 999rpx; background: #ff3b68; color: #ffffff; font-size: 16rpx; line-height: 26rpx; text-align: center; box-sizing: border-box; }
 .story-dot { margin-top: 10rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: #ff4f8a; }
 .story-title { width: 100%; margin-top: 10rpx; text-align: center; font-size: 22rpx; color: #222222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.storyEmpty { margin: 12rpx 24rpx 20rpx; padding: 28rpx 24rpx; border-radius: 20rpx; background: #f7f8fb; color: #8a8f98; font-size: 24rpx; line-height: 1.7; text-align: center; }
 .list { background: #ffffff; }
 .row { position: relative; display: flex; align-items: center; padding: 24rpx; border-bottom: 1rpx solid #f5f5f5; }
 .row-avatar { width: 94rpx; height: 94rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #ffffff; font-size: 34rpx; font-weight: 700; }

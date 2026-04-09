@@ -1,0 +1,140 @@
+﻿.page{
+  min-height:100vh;
+  background:#f6faf4;
+  padding-bottom:30rpx;
+}
+
+.searchWrap{
+  padding:24rpx;
+  background:#ffffff;
+}
+
+.searchBox{
+  height:84rpx;
+  background:#ffffff;
+  border:2rpx solid #cfe9e8;
+  border-radius:999rpx;
+  display:flex;
+  align-items:center;
+  padding:0 24rpx;
+}
+
+.city{
+  color:#57984a;
+  font-size:28rpx;
+  font-weight:600;
+  flex-shrink:0;
+}
+
+.searchDivider{
+  width:1rpx;
+  height:34rpx;
+  background:#dbe8d7;
+  margin:0 20rpx;
+}
+
+.searchPlaceholder{
+  color:#8ea08b;
+  font-size:28rpx;
+}
+
+.filterBar{
+  background:#ffffff;
+  display:flex;
+  justify-content:space-around;
+  padding:24rpx 0;
+  margin-bottom:16rpx;
+}
+
+.filterItem{
+  font-size:30rpx;
+  font-weight:600;
+  color:#1f2a1f;
+}
+
+.hotelList{
+  padding:0 24rpx;
+}
+
+.hotelCard{
+  background:#ffffff;
+  border-radius:24rpx;
+  overflow:hidden;
+  margin-bottom:20rpx;
+  box-shadow:0 10rpx 28rpx rgba(161, 132, 103, 0.08);
+}
+
+.hotelImg{
+  width:100%;
+  height:260rpx;
+  display:block;
+}
+
+.hotelBody{
+  padding:22rpx;
+}
+
+.hotelName{
+  font-size:34rpx;
+  font-weight:700;
+  color:#1f2a1f;
+  margin-bottom:12rpx;
+}
+
+.scoreRow{
+  display:flex;
+  align-items:center;
+  margin-bottom:10rpx;
+}
+
+.score{
+  color:#57984a;
+  font-size:30rpx;
+  font-weight:700;
+  margin-right:16rpx;
+}
+
+.comment{
+  color:#667566;
+  font-size:26rpx;
+}
+
+.desc{
+  color:#667566;
+  font-size:26rpx;
+  line-height:1.7;
+  margin-bottom:14rpx;
+}
+
+.tagRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12rpx;
+  margin-bottom:18rpx;
+}
+
+.tag{
+  padding:8rpx 16rpx;
+  background:#edf5ea;
+  border-radius:999rpx;
+  color:#667566;
+  font-size:22rpx;
+}
+
+.priceRow{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.price{
+  color:#57984a;
+  font-size:38rpx;
+  font-weight:700;
+}
+
+.empty{
+  text-align:center;
+  color:#99a598;
+  margin-top:100rpx;
+  font-size:28rpx;
+}
